@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import SearchBar from "@/components/SearchBar";
 import Map from "@/components/Map";
 import TerminalList from "@/components/TerminalList";
@@ -17,6 +17,7 @@ interface Terminal {
 const Index = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
+  const [selectedTerminalId, setSelectedTerminalId] = useState<number | undefined>(undefined);
   const { toast } = useToast();
 
   // Demo data - in a real app, this would come from an API
@@ -44,6 +45,14 @@ const Index = () => {
     }
   ]);
 
+  useEffect(() => {
+    // Check for user's preferred color scheme
+    if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      setDarkMode(true);
+      document.documentElement.classList.add('dark');
+    }
+  }, []);
+
   const handleSearch = (query: string) => {
     toast({
       title: "Search initiated",
@@ -54,12 +63,15 @@ const Index = () => {
   };
 
   const handleSelectTerminal = (terminal: Terminal) => {
+    setSelectedTerminalId(terminal.id);
     toast({
       title: "Terminal selected",
       description: `You selected ${terminal.name}`,
     });
-    // In a real app, this would update the map focus
-    console.log("Selected terminal:", terminal);
+    // In a mobile view, close the sidebar after selection
+    if (window.innerWidth < 1024) {
+      setSidebarOpen(false);
+    }
   };
 
   const toggleDarkMode = () => {
@@ -116,7 +128,8 @@ const Index = () => {
             <div className="mt-6">
               <TerminalList 
                 terminals={terminals} 
-                onSelectTerminal={handleSelectTerminal} 
+                onSelectTerminal={handleSelectTerminal}
+                selectedTerminalId={selectedTerminalId}
               />
             </div>
           </div>
@@ -125,7 +138,7 @@ const Index = () => {
         {/* Map */}
         <main className="flex-1 p-4 lg:p-6">
           <div className="h-full relative rounded-lg overflow-hidden shadow-xl">
-            <Map />
+            <Map selectedTerminalId={selectedTerminalId} />
             
             {/* Mobile search button */}
             <div className="lg:hidden absolute bottom-4 right-4">

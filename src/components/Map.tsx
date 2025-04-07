@@ -9,9 +9,18 @@ const MAPBOX_TOKEN = "YOUR_MAPBOX_TOKEN";
 
 interface MapProps {
   onMapLoaded?: () => void;
+  selectedTerminalId?: number;
 }
 
-const Map: React.FC<MapProps> = ({ onMapLoaded }) => {
+interface Terminal {
+  id: number;
+  name: string;
+  coordinates: [number, number];
+  taxiCount: number;
+  destinations: string[];
+}
+
+const Map: React.FC<MapProps> = ({ onMapLoaded, selectedTerminalId }) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const [mapTokenInput, setMapTokenInput] = useState("");
@@ -19,8 +28,12 @@ const Map: React.FC<MapProps> = ({ onMapLoaded }) => {
     localStorage.getItem('mapbox_token') || MAPBOX_TOKEN
   );
   const [showTokenInput, setShowTokenInput] = useState(!localStorage.getItem('mapbox_token') && MAPBOX_TOKEN === "YOUR_MAPBOX_TOKEN");
+  const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
+  const [terminals, setTerminals] = useState<Terminal[]>([]);
+  const [routeDisplayed, setRouteDisplayed] = useState(false);
   const { toast } = useToast();
 
+  // Effect to initialize the map
   useEffect(() => {
     if (showTokenInput || !mapToken || mapToken === "YOUR_MAPBOX_TOKEN") {
       return;
@@ -52,17 +65,19 @@ const Map: React.FC<MapProps> = ({ onMapLoaded }) => {
         navigator.geolocation.getCurrentPosition(
           (position) => {
             const { longitude, latitude } = position.coords;
+            const userCoords: [number, number] = [longitude, latitude];
+            setUserLocation(userCoords);
             
             if (map.current) {
               map.current.flyTo({
-                center: [longitude, latitude],
+                center: userCoords,
                 zoom: 14,
                 essential: true
               });
 
               // Add a marker for user's location
               new mapboxgl.Marker({ color: '#2563EB' })
-                .setLngLat([longitude, latitude])
+                .setLngLat(userCoords)
                 .addTo(map.current);
 
               // Example taxi terminals for demonstration
@@ -91,6 +106,8 @@ const Map: React.FC<MapProps> = ({ onMapLoaded }) => {
                 }
               ];
 
+              setTerminals(demoTerminals);
+
               // Add markers for taxi terminals
               demoTerminals.forEach(terminal => {
                 const el = document.createElement('div');
@@ -102,7 +119,12 @@ const Map: React.FC<MapProps> = ({ onMapLoaded }) => {
                     <h3 class="font-bold text-base">${terminal.name}</h3>
                     <p class="text-sm mt-1">Available taxis: ${terminal.taxiCount}</p>
                     <p class="text-sm mt-1">Destinations: ${terminal.destinations.join(', ')}</p>
-                    <button class="mt-2 px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 transition-colors">View Details</button>
+                    <button 
+                      class="mt-2 px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 transition-colors"
+                      onclick="window.showRoute(${terminal.id})"
+                    >
+                      Show Route
+                    </button>
                   `);
 
                 new mapboxgl.Marker(el)
@@ -110,6 +132,14 @@ const Map: React.FC<MapProps> = ({ onMapLoaded }) => {
                   .setPopup(popup)
                   .addTo(map.current!);
               });
+
+              // Add a global function to handle route display
+              window.showRoute = (terminalId: number) => {
+                const selectedTerminal = demoTerminals.find(t => t.id === terminalId);
+                if (selectedTerminal && userCoords) {
+                  drawRoute(userCoords, selectedTerminal.coordinates);
+                }
+              };
             }
           },
           (error) => {
@@ -138,10 +168,115 @@ const Map: React.FC<MapProps> = ({ onMapLoaded }) => {
 
     return () => {
       if (map.current) {
+        window.showRoute = () => {}; // Clear the global function
         map.current.remove();
       }
     };
   }, [mapToken, showTokenInput, onMapLoaded, toast]);
+
+  // Effect to handle selected terminal from parent component
+  useEffect(() => {
+    if (selectedTerminalId && map.current && userLocation) {
+      const selectedTerminal = terminals.find(t => t.id === selectedTerminalId);
+      if (selectedTerminal) {
+        drawRoute(userLocation, selectedTerminal.coordinates);
+      }
+    }
+  }, [selectedTerminalId, userLocation, terminals]);
+
+  // Function to draw a route between two points
+  const drawRoute = async (start: [number, number], end: [number, number]) => {
+    if (!map.current) return;
+
+    // Remove previous route if it exists
+    if (routeDisplayed && map.current.getSource('route')) {
+      map.current.removeLayer('route');
+      map.current.removeSource('route');
+      setRouteDisplayed(false);
+    }
+
+    try {
+      // Get directions from Mapbox
+      const query = await fetch(
+        `https://api.mapbox.com/directions/v5/mapbox/driving/${start[0]},${start[1]};${end[0]},${end[1]}?steps=true&geometries=geojson&access_token=${mapToken}`
+      );
+      
+      const json = await query.json();
+      if (!json.routes || json.routes.length === 0) {
+        throw new Error('No routes found');
+      }
+      
+      const data = json.routes[0];
+      const route = data.geometry.coordinates;
+      
+      if (map.current.getSource('route')) {
+        (map.current.getSource('route') as mapboxgl.GeoJSONSource).setData({
+          type: 'Feature',
+          properties: {},
+          geometry: {
+            type: 'LineString',
+            coordinates: route
+          }
+        });
+      } else {
+        map.current.addSource('route', {
+          type: 'geojson',
+          data: {
+            type: 'Feature',
+            properties: {},
+            geometry: {
+              type: 'LineString',
+              coordinates: route
+            }
+          }
+        });
+        
+        map.current.addLayer({
+          id: 'route',
+          type: 'line',
+          source: 'route',
+          layout: {
+            'line-join': 'round',
+            'line-cap': 'round'
+          },
+          paint: {
+            'line-color': '#3887be',
+            'line-width': 5,
+            'line-opacity': 0.75
+          }
+        });
+      }
+      
+      setRouteDisplayed(true);
+      
+      // Fit the map to show both points
+      const bounds = new mapboxgl.LngLatBounds()
+        .extend(start)
+        .extend(end);
+        
+      map.current.fitBounds(bounds, {
+        padding: 100,
+        maxZoom: 15
+      });
+      
+      // Display the distance and duration in a toast
+      const distance = (data.distance / 1000).toFixed(1); // km
+      const duration = Math.floor(data.duration / 60); // minutes
+      
+      toast({
+        title: "Route Information",
+        description: `Distance: ${distance} km • Approx. ${duration} min by car`,
+      });
+      
+    } catch (error) {
+      console.error('Error calculating route:', error);
+      toast({
+        title: "Route Error",
+        description: "Could not calculate route to this terminal.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleTokenSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -201,5 +336,12 @@ const Map: React.FC<MapProps> = ({ onMapLoaded }) => {
 
   return <div ref={mapContainer} className="h-full w-full rounded-lg overflow-hidden" />;
 };
+
+// Add the global showRoute function type
+declare global {
+  interface Window {
+    showRoute: (terminalId: number) => void;
+  }
+}
 
 export default Map;
