@@ -1,11 +1,38 @@
 
-import React, { useEffect, useRef, useState } from 'react';
-import mapboxgl from 'mapbox-gl';
-import 'mapbox-gl/dist/mapbox-gl.css';
+import React, { useEffect, useState, useRef } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, useMap, Polyline } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { useToast } from "@/hooks/use-toast";
 
-// This token would need to be replaced with your actual Mapbox token
-const MAPBOX_TOKEN = "YOUR_MAPBOX_TOKEN";
+// Fix Leaflet icon issue
+import icon from 'leaflet/dist/images/marker-icon.png';
+import iconShadow from 'leaflet/dist/images/marker-shadow.png';
+
+let DefaultIcon = L.icon({
+  iconUrl: icon,
+  shadowUrl: iconShadow,
+  iconSize: [25, 38],
+  iconAnchor: [12, 38],
+});
+
+L.Marker.prototype.options.icon = DefaultIcon;
+
+// Custom taxi icon
+const taxiIcon = L.divIcon({
+  className: 'taxi-marker-icon',
+  html: '<div class="w-8 h-8 bg-taxi text-black flex items-center justify-center rounded-full shadow-lg">🚕</div>',
+  iconSize: [32, 32],
+  iconAnchor: [16, 16],
+});
+
+// Custom user icon
+const userIcon = L.divIcon({
+  className: 'user-marker-icon',
+  html: '<div class="w-8 h-8 bg-blue-500 text-white flex items-center justify-center rounded-full shadow-lg">👤</div>',
+  iconSize: [32, 32],
+  iconAnchor: [16, 16],
+});
 
 interface MapProps {
   onMapLoaded?: () => void;
@@ -20,254 +47,61 @@ interface Terminal {
   destinations: string[];
 }
 
-const Map: React.FC<MapProps> = ({ onMapLoaded, selectedTerminalId }) => {
-  const mapContainer = useRef<HTMLDivElement>(null);
-  const map = useRef<mapboxgl.Map | null>(null);
-  const [mapTokenInput, setMapTokenInput] = useState("");
-  const [mapToken, setMapToken] = useState<string | null>(
-    localStorage.getItem('mapbox_token') || MAPBOX_TOKEN
-  );
-  const [showTokenInput, setShowTokenInput] = useState(!localStorage.getItem('mapbox_token') && MAPBOX_TOKEN === "YOUR_MAPBOX_TOKEN");
-  const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
-  const [terminals, setTerminals] = useState<Terminal[]>([]);
-  const [routeDisplayed, setRouteDisplayed] = useState(false);
+// Component to handle map center updates and route display
+const MapController = ({ userLocation, terminals, selectedTerminalId }: { 
+  userLocation: [number, number], 
+  terminals: Terminal[],
+  selectedTerminalId?: number 
+}) => {
+  const map = useMap();
+  const [route, setRoute] = useState<[number, number][]>([]);
   const { toast } = useToast();
-
-  // Effect to initialize the map
+  
+  // Center map on user location initially
   useEffect(() => {
-    if (showTokenInput || !mapToken || mapToken === "YOUR_MAPBOX_TOKEN") {
-      return;
+    if (userLocation) {
+      map.setView(userLocation, 14);
     }
-
-    if (!mapContainer.current) return;
-
-    mapboxgl.accessToken = mapToken;
-
-    try {
-      map.current = new mapboxgl.Map({
-        container: mapContainer.current,
-        style: 'mapbox://styles/mapbox/streets-v12',
-        center: [0, 0], // Will be updated when we get user location
-        zoom: 2,
-      });
-
-      map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
-      map.current.addControl(new mapboxgl.GeolocateControl({
-        positionOptions: {
-          enableHighAccuracy: true
-        },
-        trackUserLocation: true,
-        showUserHeading: true
-      }));
-
-      // Get user's location
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          (position) => {
-            const { longitude, latitude } = position.coords;
-            const userCoords: [number, number] = [longitude, latitude];
-            setUserLocation(userCoords);
-            
-            if (map.current) {
-              map.current.flyTo({
-                center: userCoords,
-                zoom: 14,
-                essential: true
-              });
-
-              // Add a marker for user's location
-              new mapboxgl.Marker({ color: '#2563EB' })
-                .setLngLat(userCoords)
-                .addTo(map.current);
-
-              // Example taxi terminals for demonstration
-              // In a real app, these would come from your backend
-              const demoTerminals = [
-                {
-                  id: 1,
-                  name: "Central Taxi Terminal",
-                  coordinates: [longitude + 0.01, latitude + 0.01] as [number, number],
-                  taxiCount: 15,
-                  destinations: ["Downtown", "Airport", "Shopping Mall"]
-                },
-                {
-                  id: 2,
-                  name: "North Station Taxis",
-                  coordinates: [longitude - 0.008, latitude + 0.005] as [number, number],
-                  taxiCount: 8,
-                  destinations: ["City Center", "Beach", "University"]
-                },
-                {
-                  id: 3,
-                  name: "East Terminal",
-                  coordinates: [longitude + 0.015, latitude - 0.007] as [number, number],
-                  taxiCount: 12,
-                  destinations: ["Hospital", "Business Park", "Stadium"]
-                }
-              ];
-
-              setTerminals(demoTerminals);
-
-              // Add markers for taxi terminals
-              demoTerminals.forEach(terminal => {
-                const el = document.createElement('div');
-                el.className = 'flex items-center justify-center w-8 h-8 bg-taxi text-white font-bold rounded-full shadow-lg cursor-pointer hover:bg-taxi-dark transition-colors';
-                el.innerHTML = '<span class="taxi-icon">🚕</span>';
-                
-                const popup = new mapboxgl.Popup({ offset: 25 })
-                  .setHTML(`
-                    <h3 class="font-bold text-base">${terminal.name}</h3>
-                    <p class="text-sm mt-1">Available taxis: ${terminal.taxiCount}</p>
-                    <p class="text-sm mt-1">Destinations: ${terminal.destinations.join(', ')}</p>
-                    <button 
-                      class="mt-2 px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 transition-colors"
-                      onclick="window.showRoute(${terminal.id})"
-                    >
-                      Show Route
-                    </button>
-                  `);
-
-                new mapboxgl.Marker(el)
-                  .setLngLat(terminal.coordinates)
-                  .setPopup(popup)
-                  .addTo(map.current!);
-              });
-
-              // Add a global function to handle route display
-              window.showRoute = (terminalId: number) => {
-                const selectedTerminal = demoTerminals.find(t => t.id === terminalId);
-                if (selectedTerminal && userCoords) {
-                  drawRoute(userCoords, selectedTerminal.coordinates);
-                }
-              };
-            }
-          },
-          (error) => {
-            console.error("Error getting location:", error);
-            toast({
-              title: "Location Error",
-              description: "Could not access your location. Please enable location services.",
-              variant: "destructive",
-            });
-          }
-        );
-      }
-
-      map.current.on('load', () => {
-        if (onMapLoaded) onMapLoaded();
-      });
-    } catch (error) {
-      console.error("Map initialization error:", error);
-      toast({
-        title: "Map Error",
-        description: "There was an error loading the map. Please check your internet connection.",
-        variant: "destructive",
-      });
-      setShowTokenInput(true);
-    }
-
-    return () => {
-      if (map.current) {
-        window.showRoute = () => {}; // Clear the global function
-        map.current.remove();
-      }
-    };
-  }, [mapToken, showTokenInput, onMapLoaded, toast]);
-
-  // Effect to handle selected terminal from parent component
+  }, [map, userLocation]);
+  
+  // Handle selected terminal and route calculation
   useEffect(() => {
-    if (selectedTerminalId && map.current && userLocation) {
+    if (selectedTerminalId && userLocation) {
       const selectedTerminal = terminals.find(t => t.id === selectedTerminalId);
       if (selectedTerminal) {
-        drawRoute(userLocation, selectedTerminal.coordinates);
+        calculateRoute(userLocation, selectedTerminal.coordinates);
       }
     }
   }, [selectedTerminalId, userLocation, terminals]);
-
-  // Function to draw a route between two points
-  const drawRoute = async (start: [number, number], end: [number, number]) => {
-    if (!map.current) return;
-
-    // Remove previous route if it exists
-    if (routeDisplayed && map.current.getSource('route')) {
-      map.current.removeLayer('route');
-      map.current.removeSource('route');
-      setRouteDisplayed(false);
-    }
-
+  
+  // Calculate route (simplified for demo - in a real app, use a routing API)
+  const calculateRoute = async (start: [number, number], end: [number, number]) => {
     try {
-      // Get directions from Mapbox
-      const query = await fetch(
-        `https://api.mapbox.com/directions/v5/mapbox/driving/${start[0]},${start[1]};${end[0]},${end[1]}?steps=true&geometries=geojson&access_token=${mapToken}`
-      );
+      // Simulate route calculation with straight line for demo
+      // In a real app, use OSRM, GraphHopper, or other routing API
+      const route = [start, end];
+      setRoute(route);
       
-      const json = await query.json();
-      if (!json.routes || json.routes.length === 0) {
-        throw new Error('No routes found');
-      }
+      // Fit bounds to show both points
+      const bounds = L.latLngBounds([
+        L.latLng(start[0], start[1]),
+        L.latLng(end[0], end[1])
+      ]);
+      map.fitBounds(bounds, { padding: [100, 100] });
       
-      const data = json.routes[0];
-      const route = data.geometry.coordinates;
+      // Calculate straight-line distance and estimated duration
+      const distance = map.distance(
+        L.latLng(start[0], start[1]),
+        L.latLng(end[0], end[1])
+      ) / 1000; // Convert to km
       
-      if (map.current.getSource('route')) {
-        (map.current.getSource('route') as mapboxgl.GeoJSONSource).setData({
-          type: 'Feature',
-          properties: {},
-          geometry: {
-            type: 'LineString',
-            coordinates: route
-          }
-        });
-      } else {
-        map.current.addSource('route', {
-          type: 'geojson',
-          data: {
-            type: 'Feature',
-            properties: {},
-            geometry: {
-              type: 'LineString',
-              coordinates: route
-            }
-          }
-        });
-        
-        map.current.addLayer({
-          id: 'route',
-          type: 'line',
-          source: 'route',
-          layout: {
-            'line-join': 'round',
-            'line-cap': 'round'
-          },
-          paint: {
-            'line-color': '#3887be',
-            'line-width': 5,
-            'line-opacity': 0.75
-          }
-        });
-      }
+      const estimatedMinutes = Math.round((distance / 30) * 60); // Assuming 30 km/h average speed
       
-      setRouteDisplayed(true);
-      
-      // Fit the map to show both points
-      const bounds = new mapboxgl.LngLatBounds()
-        .extend(start)
-        .extend(end);
-        
-      map.current.fitBounds(bounds, {
-        padding: 100,
-        maxZoom: 15
-      });
-      
-      // Display the distance and duration in a toast
-      const distance = (data.distance / 1000).toFixed(1); // km
-      const duration = Math.floor(data.duration / 60); // minutes
-      
+      // Show toast with route info
       toast({
         title: "Route Information",
-        description: `Distance: ${distance} km • Approx. ${duration} min by car`,
+        description: `Distance: ${distance.toFixed(1)} km • Approx. ${estimatedMinutes} min by car`,
       });
-      
     } catch (error) {
       console.error('Error calculating route:', error);
       toast({
@@ -277,64 +111,172 @@ const Map: React.FC<MapProps> = ({ onMapLoaded, selectedTerminalId }) => {
       });
     }
   };
+  
+  // Provide global function to show route
+  useEffect(() => {
+    window.showRoute = (terminalId: number) => {
+      const selectedTerminal = terminals.find(t => t.id === terminalId);
+      if (selectedTerminal && userLocation) {
+        calculateRoute(userLocation, selectedTerminal.coordinates);
+      }
+    };
+    
+    return () => {
+      window.showRoute = () => {}; // Clear global function on unmount
+    };
+  }, [terminals, userLocation]);
+  
+  return (
+    <>
+      {route.length > 0 && (
+        <Polyline 
+          positions={route} 
+          color="#3887be" 
+          weight={5} 
+          opacity={0.7} 
+        />
+      )}
+    </>
+  );
+};
 
-  const handleTokenSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (mapTokenInput.trim()) {
-      localStorage.setItem('mapbox_token', mapTokenInput);
-      setMapToken(mapTokenInput);
-      setShowTokenInput(false);
-      toast({
-        title: "Success",
-        description: "Map token saved successfully!",
-      });
+const Map: React.FC<MapProps> = ({ onMapLoaded, selectedTerminalId }) => {
+  const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
+  const [terminals, setTerminals] = useState<Terminal[]>([]);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    // Get user's location
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          const userCoords: [number, number] = [latitude, longitude]; // Note: Leaflet uses [lat, lng] instead of [lng, lat]
+          setUserLocation(userCoords);
+
+          // Example taxi terminals for demonstration
+          // In a real app, these would come from your backend
+          const demoTerminals = [
+            {
+              id: 1,
+              name: "Central Taxi Terminal",
+              coordinates: [latitude + 0.01, longitude + 0.01] as [number, number],
+              taxiCount: 15,
+              destinations: ["Downtown", "Airport", "Shopping Mall"]
+            },
+            {
+              id: 2,
+              name: "North Station Taxis",
+              coordinates: [latitude - 0.008, longitude + 0.005] as [number, number],
+              taxiCount: 8,
+              destinations: ["City Center", "Beach", "University"]
+            },
+            {
+              id: 3,
+              name: "East Terminal",
+              coordinates: [latitude + 0.015, longitude - 0.007] as [number, number],
+              taxiCount: 12,
+              destinations: ["Hospital", "Business Park", "Stadium"]
+            }
+          ];
+
+          setTerminals(demoTerminals);
+          
+          if (onMapLoaded) onMapLoaded();
+        },
+        (error) => {
+          console.error("Error getting location:", error);
+          toast({
+            title: "Location Error",
+            description: "Could not access your location. Please enable location services.",
+            variant: "destructive",
+          });
+          
+          // Use a default location if user location is not available
+          setUserLocation([51.505, -0.09]); // Default to London
+        }
+      );
     } else {
       toast({
-        title: "Error",
-        description: "Please enter a valid Mapbox token.",
+        title: "Location Error",
+        description: "Geolocation is not supported by your browser.",
         variant: "destructive",
       });
+      
+      // Use a default location if geolocation is not supported
+      setUserLocation([51.505, -0.09]); // Default to London
     }
-  };
+  }, [onMapLoaded, toast]);
 
-  if (showTokenInput) {
+  // If user location is not available yet, show loading
+  if (!userLocation) {
     return (
-      <div className="flex flex-col items-center justify-center h-full p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
-        <div className="max-w-md w-full bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg">
-          <h2 className="text-xl font-bold mb-4 text-center">Enter Mapbox Token</h2>
-          <p className="mb-4 text-sm text-gray-600 dark:text-gray-300">
-            To use the map functionality, you need to provide a Mapbox token. You can get one for free at{" "}
-            <a 
-              href="https://account.mapbox.com/auth/signup/" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="text-primary hover:underline"
-            >
-              Mapbox.com
-            </a>
-          </p>
-          <form onSubmit={handleTokenSubmit}>
-            <input
-              type="text"
-              value={mapTokenInput}
-              onChange={(e) => setMapTokenInput(e.target.value)}
-              placeholder="Enter your Mapbox token"
-              className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded mb-4"
-              required
-            />
-            <button
-              type="submit"
-              className="w-full bg-primary text-white py-2 rounded hover:bg-primary/90 transition-colors"
-            >
-              Save Token
-            </button>
-          </form>
+      <div className="h-full w-full flex items-center justify-center bg-gray-100 dark:bg-gray-800 rounded-lg">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p>Loading map...</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">Please allow location access</p>
         </div>
       </div>
     );
   }
 
-  return <div ref={mapContainer} className="h-full w-full rounded-lg overflow-hidden" />;
+  return (
+    <div className="h-full w-full rounded-lg overflow-hidden">
+      <MapContainer 
+        center={userLocation} 
+        zoom={14} 
+        style={{ height: '100%', width: '100%' }}
+        zoomControl={false}
+      >
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
+        
+        {/* User location marker */}
+        <Marker position={userLocation} icon={userIcon}>
+          <Popup>
+            <div className="text-center">
+              <strong>Your Location</strong>
+            </div>
+          </Popup>
+        </Marker>
+        
+        {/* Terminal markers */}
+        {terminals.map((terminal) => (
+          <Marker 
+            key={terminal.id} 
+            position={terminal.coordinates} 
+            icon={taxiIcon}
+          >
+            <Popup>
+              <div className="p-1">
+                <h3 className="font-bold text-base">{terminal.name}</h3>
+                <p className="text-sm mt-1">Available taxis: {terminal.taxiCount}</p>
+                <p className="text-sm mt-1">Destinations: {terminal.destinations.join(', ')}</p>
+                <button 
+                  className="mt-2 px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 transition-colors"
+                  onClick={() => window.showRoute(terminal.id)}
+                >
+                  Show Route
+                </button>
+              </div>
+            </Popup>
+          </Marker>
+        ))}
+        
+        {/* Map controller for routes and centering */}
+        {userLocation && terminals.length > 0 && (
+          <MapController 
+            userLocation={userLocation} 
+            terminals={terminals} 
+            selectedTerminalId={selectedTerminalId} 
+          />
+        )}
+      </MapContainer>
+    </div>
+  );
 };
 
 // Add the global showRoute function type
