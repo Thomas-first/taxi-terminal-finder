@@ -71,21 +71,21 @@ const Map: React.FC<MapProps> = ({ onMapLoaded }) => {
                 {
                   id: 1,
                   name: "Central Taxi Terminal",
-                  coordinates: [longitude + 0.01, latitude + 0.01],
+                  coordinates: [longitude + 0.01, latitude + 0.01] as [number, number],
                   taxiCount: 15,
                   destinations: ["Downtown", "Airport", "Shopping Mall"]
                 },
                 {
                   id: 2,
                   name: "North Station Taxis",
-                  coordinates: [longitude - 0.008, latitude + 0.005],
+                  coordinates: [longitude - 0.008, latitude + 0.005] as [number, number],
                   taxiCount: 8,
                   destinations: ["City Center", "Beach", "University"]
                 },
                 {
                   id: 3,
                   name: "East Terminal",
-                  coordinates: [longitude + 0.015, latitude - 0.007],
+                  coordinates: [longitude + 0.015, latitude - 0.007] as [number, number],
                   taxiCount: 12,
                   destinations: ["Hospital", "Business Park", "Stadium"]
                 }
