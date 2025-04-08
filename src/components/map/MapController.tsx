@@ -19,6 +19,7 @@ const MapController: React.FC<MapControllerProps> = ({
   const map = useMap();
   const [route, setRoute] = useState<[number, number][]>([]);
   const [isLoadingRoute, setIsLoadingRoute] = useState(false);
+  const [routeInfo, setRouteInfo] = useState<{distance: string, duration: string} | null>(null);
   const { toast } = useToast();
   
   // Center map on user location initially
@@ -38,6 +39,7 @@ const MapController: React.FC<MapControllerProps> = ({
     } else {
       // Clear route if no terminal is selected
       setRoute([]);
+      setRouteInfo(null);
     }
   }, [selectedTerminalId, userLocation, terminals]);
   
@@ -74,9 +76,16 @@ const MapController: React.FC<MapControllerProps> = ({
         );
         map.fitBounds(bounds, { padding: [100, 100] });
         
-        // Show toast with route info
+        // Calculate route info
         const distance = (data.routes[0].distance / 1000).toFixed(1); // km
         const duration = Math.round(data.routes[0].duration / 60); // minutes
+        
+        const routeInfoData = {
+          distance: `${distance} km`,
+          duration: `${duration} min`
+        };
+        
+        setRouteInfo(routeInfoData);
         
         toast({
           title: "Route Information",
@@ -111,6 +120,13 @@ const MapController: React.FC<MapControllerProps> = ({
       ) / 1000; // Convert to km
       
       const estimatedMinutes = Math.round((distance / 30) * 60); // Assuming 30 km/h average speed
+      
+      const routeInfoData = {
+        distance: `${distance.toFixed(1)} km (straight line)`,
+        duration: `~${estimatedMinutes} min (estimate)`
+      };
+      
+      setRouteInfo(routeInfoData);
     }
     setIsLoadingRoute(false);
   };
@@ -139,6 +155,22 @@ const MapController: React.FC<MapControllerProps> = ({
           </div>
         </div>
       )}
+      
+      {routeInfo && (
+        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-white dark:bg-gray-800 px-4 py-2 rounded-full shadow z-50">
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center">
+              <span className="font-medium">🚕</span>
+              <span className="ml-1 text-sm">{routeInfo.distance}</span>
+            </div>
+            <div className="flex items-center">
+              <span className="font-medium">⏱️</span>
+              <span className="ml-1 text-sm">{routeInfo.duration}</span>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {route.length > 0 && (
         <Polyline 
           positions={route} 

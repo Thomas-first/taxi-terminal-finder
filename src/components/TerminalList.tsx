@@ -1,12 +1,19 @@
 
-import { Car, MapPin, Clock } from "lucide-react";
+import { Car, MapPin, Clock, DollarSign, Navigation } from "lucide-react";
+
+interface PriceInfo {
+  destination: string;
+  price: number;
+}
 
 interface Terminal {
   id: number;
   name: string;
   distance: string;
+  distanceValue: number;
   taxiCount: number;
   destinations: string[];
+  prices?: PriceInfo[];
 }
 
 interface TerminalListProps {
@@ -20,6 +27,12 @@ const TerminalList = ({
   onSelectTerminal, 
   selectedTerminalId 
 }: TerminalListProps) => {
+  // Get price for a destination (Helper function)
+  const getPriceForDestination = (terminal: Terminal, destination: string) => {
+    if (!terminal.prices) return null;
+    return terminal.prices.find(p => p.destination === destination);
+  };
+
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
       <div className="p-4 bg-primary text-white">
@@ -55,16 +68,25 @@ const TerminalList = ({
                     </div>
                   </div>
                   <div className="mt-2">
-                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400">DESTINATIONS</p>
+                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400">DESTINATIONS & PRICING</p>
                     <div className="flex flex-wrap gap-1 mt-1">
-                      {terminal.destinations.map((dest, index) => (
-                        <span
-                          key={index}
-                          className="px-2 py-1 bg-gray-100 dark:bg-gray-600 rounded text-xs"
-                        >
-                          {dest}
-                        </span>
-                      ))}
+                      {terminal.destinations.map((dest, index) => {
+                        const priceInfo = getPriceForDestination(terminal, dest);
+                        return (
+                          <div 
+                            key={index}
+                            className="px-2 py-1 bg-gray-100 dark:bg-gray-600 rounded text-xs flex items-center"
+                          >
+                            <span>{dest}</span>
+                            {priceInfo && (
+                              <span className="ml-1 flex items-center text-green-700 dark:text-green-400">
+                                <DollarSign className="h-3 w-3 ml-1" />
+                                {priceInfo.price.toFixed(2)}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 </div>

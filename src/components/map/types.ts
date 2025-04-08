@@ -5,6 +5,7 @@ export interface Terminal {
   coordinates: [number, number];
   taxiCount: number;
   destinations: string[];
+  prices?: { destination: string; price: number }[];
 }
 
 export interface MapProps {

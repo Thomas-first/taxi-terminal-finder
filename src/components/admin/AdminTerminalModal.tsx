@@ -3,11 +3,11 @@ import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { MapPin, Plus, Trash } from "lucide-react";
+import { MapPin, Plus, Trash, DollarSign } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Terminal } from '../map/types';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 interface AdminTerminalModalProps {
   isOpen: boolean;
@@ -25,6 +25,7 @@ const AdminTerminalModal: React.FC<AdminTerminalModalProps> = ({
   const [name, setName] = useState('');
   const [taxiCount, setTaxiCount] = useState(5);
   const [destinations, setDestinations] = useState<string[]>(['']);
+  const [prices, setPrices] = useState<number[]>([10]);
   const { toast } = useToast();
 
   // Reset form when modal opens or location changes
@@ -33,23 +34,35 @@ const AdminTerminalModal: React.FC<AdminTerminalModalProps> = ({
       setName('');
       setTaxiCount(5);
       setDestinations(['']);
+      setPrices([10]);
     }
   }, [isOpen, selectedLocation]);
 
   const handleAddDestination = () => {
     setDestinations([...destinations, '']);
+    setPrices([...prices, 10]);
   };
 
   const handleRemoveDestination = (index: number) => {
     const newDestinations = [...destinations];
     newDestinations.splice(index, 1);
     setDestinations(newDestinations);
+    
+    const newPrices = [...prices];
+    newPrices.splice(index, 1);
+    setPrices(newPrices);
   };
 
   const handleDestinationChange = (index: number, value: string) => {
     const newDestinations = [...destinations];
     newDestinations[index] = value;
     setDestinations(newDestinations);
+  };
+
+  const handlePriceChange = (index: number, value: string) => {
+    const newPrices = [...prices];
+    newPrices[index] = parseFloat(value) || 0;
+    setPrices(newPrices);
   };
 
   const handleSubmit = () => {
@@ -72,7 +85,8 @@ const AdminTerminalModal: React.FC<AdminTerminalModalProps> = ({
     }
 
     // Filter out empty destinations
-    const filteredDestinations = destinations.filter(d => d.trim() !== '');
+    const filteredDestinations = destinations.filter((d, index) => d.trim() !== '');
+    const filteredPrices = prices.filter((_, index) => destinations[index].trim() !== '');
     
     if (filteredDestinations.length === 0) {
       toast({
@@ -82,6 +96,12 @@ const AdminTerminalModal: React.FC<AdminTerminalModalProps> = ({
       });
       return;
     }
+
+    // Format prices for storage
+    const priceList = filteredDestinations.map((dest, index) => ({
+      destination: dest,
+      price: filteredPrices[index] || 0
+    }));
 
     // Get existing terminals from localStorage
     const existingTerminalsJson = localStorage.getItem('adminTerminals');
@@ -96,6 +116,7 @@ const AdminTerminalModal: React.FC<AdminTerminalModalProps> = ({
       coordinates: selectedLocation,
       taxiCount,
       destinations: filteredDestinations,
+      prices: priceList,
     };
 
     // Add to existing terminals
@@ -115,7 +136,7 @@ const AdminTerminalModal: React.FC<AdminTerminalModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[550px]">
+      <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>Add New Taxi Terminal</DialogTitle>
         </DialogHeader>
@@ -168,26 +189,54 @@ const AdminTerminalModal: React.FC<AdminTerminalModalProps> = ({
           </div>
           
           <div className="grid gap-2">
-            <Label>Destinations</Label>
-            {destinations.map((destination, index) => (
-              <div key={index} className="flex items-center gap-2">
-                <Input 
-                  value={destination} 
-                  onChange={(e) => handleDestinationChange(index, e.target.value)} 
-                  placeholder="e.g., Airport, Downtown, etc."
-                />
-                {destinations.length > 1 && (
-                  <Button 
-                    size="icon" 
-                    variant="outline" 
-                    type="button" 
-                    onClick={() => handleRemoveDestination(index)}
-                  >
-                    <Trash className="h-4 w-4" />
-                  </Button>
-                )}
-              </div>
-            ))}
+            <Label>Destinations & Pricing</Label>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-1/2">Destination</TableHead>
+                  <TableHead className="w-1/4">Price ($)</TableHead>
+                  <TableHead className="w-1/4"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {destinations.map((destination, index) => (
+                  <TableRow key={index}>
+                    <TableCell className="py-1 px-2">
+                      <Input 
+                        value={destination} 
+                        onChange={(e) => handleDestinationChange(index, e.target.value)} 
+                        placeholder="e.g., Airport, Downtown, etc."
+                      />
+                    </TableCell>
+                    <TableCell className="py-1 px-2">
+                      <div className="flex items-center">
+                        <DollarSign className="h-4 w-4 mr-1 text-muted-foreground" />
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={prices[index]}
+                          onChange={(e) => handlePriceChange(index, e.target.value)}
+                          placeholder="10.00"
+                        />
+                      </div>
+                    </TableCell>
+                    <TableCell className="py-1 px-2 text-right">
+                      {destinations.length > 1 && (
+                        <Button 
+                          size="icon" 
+                          variant="ghost" 
+                          type="button" 
+                          onClick={() => handleRemoveDestination(index)}
+                        >
+                          <Trash className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
             <Button 
               type="button" 
               variant="outline" 

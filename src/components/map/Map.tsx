@@ -60,21 +60,36 @@ const Map: React.FC<MapProps> = ({ onMapLoaded, selectedTerminalId }) => {
           name: "Central Taxi Terminal",
           coordinates: [latitude + 0.01, longitude + 0.01] as [number, number],
           taxiCount: 15,
-          destinations: ["Downtown", "Airport", "Shopping Mall"]
+          destinations: ["Downtown", "Airport", "Shopping Mall"],
+          prices: [
+            { destination: "Downtown", price: 12.50 },
+            { destination: "Airport", price: 25.00 },
+            { destination: "Shopping Mall", price: 15.75 }
+          ]
         },
         {
           id: 2,
           name: "North Station Taxis",
           coordinates: [latitude - 0.008, longitude + 0.005] as [number, number],
           taxiCount: 8,
-          destinations: ["City Center", "Beach", "University"]
+          destinations: ["City Center", "Beach", "University"],
+          prices: [
+            { destination: "City Center", price: 10.00 },
+            { destination: "Beach", price: 18.50 },
+            { destination: "University", price: 13.25 }
+          ]
         },
         {
           id: 3,
           name: "East Terminal",
           coordinates: [latitude + 0.015, longitude - 0.007] as [number, number],
           taxiCount: 12,
-          destinations: ["Hospital", "Business Park", "Stadium"]
+          destinations: ["Hospital", "Business Park", "Stadium"],
+          prices: [
+            { destination: "Hospital", price: 9.75 },
+            { destination: "Business Park", price: 14.50 },
+            { destination: "Stadium", price: 22.00 }
+          ]
         }
       ];
     }
