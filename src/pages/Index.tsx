@@ -119,7 +119,7 @@ const Index = () => {
   return (
     <div className={`flex flex-col h-screen ${darkMode ? 'dark' : ''}`}>
       {/* Header */}
-      <header className="bg-white dark:bg-gray-800 shadow-md p-4 z-10">
+      <header className="bg-white dark:bg-gray-800 shadow-md p-4 z-30">
         <div className="container mx-auto flex items-center justify-between">
           <div className="flex items-center">
             <button 
@@ -153,7 +153,7 @@ const Index = () => {
         <aside 
           className={`${
             sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-          } lg:translate-x-0 w-full max-w-sm bg-gray-50 dark:bg-gray-900 transform transition-transform duration-300 ease-in-out absolute lg:relative z-20 h-[calc(100vh-64px)] shadow-lg lg:shadow-none`}
+          } lg:translate-x-0 w-full max-w-sm bg-gray-50 dark:bg-gray-900 transform transition-transform duration-300 ease-in-out fixed lg:relative z-40 h-[calc(100vh-64px)] shadow-lg lg:shadow-none`}
         >
           <div className="p-4">
             <SearchBar onSearch={handleSearch} />
@@ -181,12 +181,12 @@ const Index = () => {
         </aside>
 
         {/* Map */}
-        <main className="flex-1 p-4 lg:p-6">
+        <main className="flex-1 p-4 lg:p-6 z-20">
           <div className="h-full relative rounded-lg overflow-hidden shadow-xl">
             <Map selectedTerminalId={selectedTerminalId} />
             
             {/* Mobile search button */}
-            <div className="lg:hidden absolute bottom-4 right-4">
+            <div className="lg:hidden absolute bottom-4 right-4 z-30">
               <button 
                 onClick={() => setSidebarOpen(true)}
                 className="bg-white dark:bg-gray-800 p-3 rounded-full shadow-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"

@@ -13,14 +13,14 @@ const TerminalMarker: React.FC<TerminalMarkerProps> = ({ terminal, isSelected })
   // Create custom taxi icon
   const taxiIcon = L.divIcon({
     className: 'taxi-marker-icon',
-    html: `<div class="w-8 h-8 ${isSelected ? 'bg-primary' : 'bg-taxi'} text-black flex items-center justify-center rounded-full shadow-lg ${isSelected ? 'scale-125' : ''} transition-transform">🚕</div>`,
+    html: `<div class="w-8 h-8 ${isSelected ? 'bg-primary' : 'bg-taxi'} text-black flex items-center justify-center rounded-full shadow-lg ${isSelected ? 'scale-125' : ''} transition-transform duration-200">🚕</div>`,
     iconSize: [32, 32],
     iconAnchor: [16, 16]
   });
 
   return (
     <Marker position={terminal.coordinates} icon={taxiIcon}>
-      <Popup>
+      <Popup className="taxi-popup">
         <div className="p-1">
           <h3 className="font-bold text-base">{terminal.name}</h3>
           <p className="text-sm mt-1">Available taxis: {terminal.taxiCount}</p>
