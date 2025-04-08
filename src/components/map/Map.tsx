@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { MapContainer, TileLayer } from 'react-leaflet';
+import { MapContainer, TileLayer, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useToast } from "@/hooks/use-toast";
 import { MapProps, Terminal } from './types';
@@ -9,14 +9,79 @@ import TerminalMarker from './TerminalMarker';
 import UserLocationMarker from './UserLocationMarker';
 import MapController from './MapController';
 import { setupDefaultIcon } from './MapIcons';
+import AdminButton from '../admin/AdminButton';
 
 // Initialize default icon
 setupDefaultIcon();
 
+// Map Click Handler component
+const MapClickHandler = ({ 
+  isAdminMode, 
+  onLocationSelect 
+}: { 
+  isAdminMode: boolean, 
+  onLocationSelect: (lat: number, lng: number) => void 
+}) => {
+  const map = useMapEvents({
+    click: (e) => {
+      if (isAdminMode) {
+        const { lat, lng } = e.latlng;
+        onLocationSelect(lat, lng);
+      }
+    },
+  });
+  
+  return null;
+};
+
 const Map: React.FC<MapProps> = ({ onMapLoaded, selectedTerminalId }) => {
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
   const [terminals, setTerminals] = useState<Terminal[]>([]);
+  const [isAdminMode, setIsAdminMode] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState<[number, number] | null>(null);
   const { toast } = useToast();
+
+  // Function to load terminals from localStorage and demo data
+  const loadTerminals = () => {
+    // Try to get admin terminals from localStorage
+    const adminTerminalsJson = localStorage.getItem('adminTerminals');
+    const adminTerminals: Terminal[] = adminTerminalsJson 
+      ? JSON.parse(adminTerminalsJson) 
+      : [];
+    
+    // Example taxi terminals if we have a user location
+    let demoTerminals: Terminal[] = [];
+    
+    if (userLocation) {
+      const [latitude, longitude] = userLocation;
+      demoTerminals = [
+        {
+          id: 1,
+          name: "Central Taxi Terminal",
+          coordinates: [latitude + 0.01, longitude + 0.01] as [number, number],
+          taxiCount: 15,
+          destinations: ["Downtown", "Airport", "Shopping Mall"]
+        },
+        {
+          id: 2,
+          name: "North Station Taxis",
+          coordinates: [latitude - 0.008, longitude + 0.005] as [number, number],
+          taxiCount: 8,
+          destinations: ["City Center", "Beach", "University"]
+        },
+        {
+          id: 3,
+          name: "East Terminal",
+          coordinates: [latitude + 0.015, longitude - 0.007] as [number, number],
+          taxiCount: 12,
+          destinations: ["Hospital", "Business Park", "Stadium"]
+        }
+      ];
+    }
+    
+    // Combine admin and demo terminals
+    setTerminals([...adminTerminals, ...demoTerminals]);
+  };
 
   useEffect(() => {
     // Get user's location
@@ -24,36 +89,11 @@ const Map: React.FC<MapProps> = ({ onMapLoaded, selectedTerminalId }) => {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const { latitude, longitude } = position.coords;
-          const userCoords: [number, number] = [latitude, longitude]; // Note: Leaflet uses [lat, lng] instead of [lng, lat]
+          const userCoords: [number, number] = [latitude, longitude];
           setUserLocation(userCoords);
-
-          // Example taxi terminals for demonstration
-          // In a real app, these would come from your backend
-          const demoTerminals = [
-            {
-              id: 1,
-              name: "Central Taxi Terminal",
-              coordinates: [latitude + 0.01, longitude + 0.01] as [number, number],
-              taxiCount: 15,
-              destinations: ["Downtown", "Airport", "Shopping Mall"]
-            },
-            {
-              id: 2,
-              name: "North Station Taxis",
-              coordinates: [latitude - 0.008, longitude + 0.005] as [number, number],
-              taxiCount: 8,
-              destinations: ["City Center", "Beach", "University"]
-            },
-            {
-              id: 3,
-              name: "East Terminal",
-              coordinates: [latitude + 0.015, longitude - 0.007] as [number, number],
-              taxiCount: 12,
-              destinations: ["Hospital", "Business Park", "Stadium"]
-            }
-          ];
-
-          setTerminals(demoTerminals);
+          
+          // Load terminals now that we have the user location
+          loadTerminals();
           
           if (onMapLoaded) onMapLoaded();
         },
@@ -67,6 +107,7 @@ const Map: React.FC<MapProps> = ({ onMapLoaded, selectedTerminalId }) => {
           
           // Use a default location if user location is not available
           setUserLocation([51.505, -0.09]); // Default to London
+          loadTerminals();
         }
       );
     } else {
@@ -78,8 +119,21 @@ const Map: React.FC<MapProps> = ({ onMapLoaded, selectedTerminalId }) => {
       
       // Use a default location if geolocation is not supported
       setUserLocation([51.505, -0.09]); // Default to London
+      loadTerminals();
     }
   }, [onMapLoaded, toast]);
+
+  // Reload terminals when Admin mode changes or a new terminal is added
+  useEffect(() => {
+    if (userLocation) {
+      loadTerminals();
+    }
+  }, [isAdminMode, userLocation]);
+
+  // Handle location selection
+  const handleLocationSelect = (lat: number, lng: number) => {
+    setSelectedLocation([lat, lng]);
+  };
 
   // If user location is not available yet, show loading
   if (!userLocation) {
@@ -119,7 +173,31 @@ const Map: React.FC<MapProps> = ({ onMapLoaded, selectedTerminalId }) => {
             selectedTerminalId={selectedTerminalId} 
           />
         )}
+
+        {/* Map click handler for admin mode */}
+        <MapClickHandler isAdminMode={isAdminMode} onLocationSelect={handleLocationSelect} />
+        
+        {/* Selected location marker for new terminal */}
+        {isAdminMode && selectedLocation && (
+          <TerminalMarker 
+            terminal={{
+              id: 0,
+              name: "New Terminal Location",
+              coordinates: selectedLocation,
+              taxiCount: 0,
+              destinations: []
+            }} 
+            isNew={true}
+          />
+        )}
       </MapContainer>
+
+      {/* Admin controls */}
+      <AdminButton 
+        onAdminModeChange={setIsAdminMode} 
+        onLocationSelect={handleLocationSelect}
+        selectedLocation={selectedLocation}
+      />
     </div>
   );
 };
