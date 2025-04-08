@@ -104,7 +104,11 @@ const Map: React.FC<MapProps> = ({ onMapLoaded, selectedTerminalId }) => {
         
         {/* Terminal markers */}
         {terminals.map((terminal) => (
-          <TerminalMarker key={terminal.id} terminal={terminal} />
+          <TerminalMarker 
+            key={terminal.id} 
+            terminal={terminal} 
+            isSelected={terminal.id === selectedTerminalId}
+          />
         ))}
         
         {/* Map controller for routes and centering */}

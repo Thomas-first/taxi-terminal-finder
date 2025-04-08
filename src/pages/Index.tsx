@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import SearchBar from "@/components/SearchBar";
 import Map from "@/components/Map";
 import TerminalList from "@/components/TerminalList";
+import FilterPanel from "@/components/FilterPanel";
 import { Search, MapPin, Menu, X, MoonStar, Sun } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -10,6 +11,7 @@ interface Terminal {
   id: number;
   name: string;
   distance: string;
+  distanceValue: number; // Add numeric distance for filtering
   taxiCount: number;
   destinations: string[];
 }
@@ -19,13 +21,20 @@ const Index = () => {
   const [darkMode, setDarkMode] = useState(false);
   const [selectedTerminalId, setSelectedTerminalId] = useState<number | undefined>(undefined);
   const { toast } = useToast();
+  
+  // Filter states
+  const [maxDistance, setMaxDistance] = useState(5); // 5km max by default
+  const [distance, setDistance] = useState(5);
+  const [minTaxiCount, setMinTaxiCount] = useState(0);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   // Demo data - in a real app, this would come from an API
-  const [terminals] = useState<Terminal[]>([
+  const [allTerminals] = useState<Terminal[]>([
     {
       id: 1,
       name: "Central Taxi Terminal",
       distance: "1.2 km",
+      distanceValue: 1.2,
       taxiCount: 15,
       destinations: ["Downtown", "Airport", "Shopping Mall"]
     },
@@ -33,6 +42,7 @@ const Index = () => {
       id: 2,
       name: "North Station Taxis",
       distance: "0.8 km",
+      distanceValue: 0.8,
       taxiCount: 8,
       destinations: ["City Center", "Beach", "University"]
     },
@@ -40,10 +50,33 @@ const Index = () => {
       id: 3,
       name: "East Terminal",
       distance: "1.5 km",
+      distanceValue: 1.5,
       taxiCount: 12,
       destinations: ["Hospital", "Business Park", "Stadium"]
+    },
+    {
+      id: 4,
+      name: "South Gate Taxis",
+      distance: "2.3 km",
+      distanceValue: 2.3,
+      taxiCount: 5,
+      destinations: ["Residential Areas", "Schools", "Parks"]
+    },
+    {
+      id: 5,
+      name: "West End Cab Station",
+      distance: "3.7 km",
+      distanceValue: 3.7,
+      taxiCount: 20,
+      destinations: ["Convention Center", "Hotels", "Entertainment District"]
     }
   ]);
+  
+  // Apply filters to terminals
+  const filteredTerminals = allTerminals.filter(terminal => 
+    terminal.distanceValue <= distance && 
+    terminal.taxiCount >= minTaxiCount
+  );
 
   useEffect(() => {
     // Check for user's preferred color scheme
@@ -125,9 +158,21 @@ const Index = () => {
           <div className="p-4">
             <SearchBar onSearch={handleSearch} />
             
-            <div className="mt-6">
+            <div className="mt-4">
+              <FilterPanel 
+                maxDistance={maxDistance}
+                distance={distance}
+                setDistance={setDistance}
+                minTaxiCount={minTaxiCount}
+                setMinTaxiCount={setMinTaxiCount}
+                isOpen={filtersOpen}
+                setIsOpen={setFiltersOpen}
+              />
+            </div>
+            
+            <div className="mt-2">
               <TerminalList 
-                terminals={terminals} 
+                terminals={filteredTerminals} 
                 onSelectTerminal={handleSelectTerminal}
                 selectedTerminalId={selectedTerminalId}
               />

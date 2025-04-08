@@ -34,6 +34,9 @@ const MapController: React.FC<MapControllerProps> = ({
       if (selectedTerminal) {
         calculateRoute(userLocation, selectedTerminal.coordinates);
       }
+    } else {
+      // Clear route if no terminal is selected
+      setRoute([]);
     }
   }, [selectedTerminalId, userLocation, terminals]);
   
