@@ -4,14 +4,18 @@ import SearchBar from "@/components/SearchBar";
 import Map from "@/components/Map";
 import TerminalList from "@/components/TerminalList";
 import FilterPanel from "@/components/FilterPanel";
-import { Search, MapPin, Menu, X, MoonStar, Sun } from "lucide-react";
+import { Search, MapPin, Menu, X, MoonStar, Sun, User as UserIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import AuthModal from "@/components/auth/AuthModal";
+import UserProfile from "@/components/user/UserProfile";
+import PaymentMethodForm from "@/components/payment/PaymentMethodForm";
+import { User, PaymentMethod, Booking } from "@/components/map/types";
 
 interface Terminal {
   id: number;
   name: string;
   distance: string;
-  distanceValue: number; // Add numeric distance for filtering
+  distanceValue: number;
   taxiCount: number;
   destinations: string[];
 }
@@ -22,13 +26,18 @@ const Index = () => {
   const [selectedTerminalId, setSelectedTerminalId] = useState<number | undefined>(undefined);
   const { toast } = useToast();
   
+  // Authentication and user state
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  
   // Filter states
-  const [maxDistance, setMaxDistance] = useState(5); // 5km max by default
+  const [maxDistance, setMaxDistance] = useState(5);
   const [distance, setDistance] = useState(5);
   const [minTaxiCount, setMinTaxiCount] = useState(0);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
-  // Demo data - in a real app, this would come from an API
+  // Load mock terminals data
   const [allTerminals] = useState<Terminal[]>([
     {
       id: 1,
@@ -84,29 +93,81 @@ const Index = () => {
       setDarkMode(true);
       document.documentElement.classList.add('dark');
     }
+    
+    // Demo: Load stored user from localStorage if available
+    const storedUserJson = localStorage.getItem('demoUser');
+    if (storedUserJson) {
+      try {
+        const user = JSON.parse(storedUserJson);
+        setCurrentUser(user);
+      } catch (e) {
+        console.error("Error parsing stored user", e);
+      }
+    }
   }, []);
 
+  // Handle login
+  const handleLogin = (user: User) => {
+    setCurrentUser(user);
+    localStorage.setItem('demoUser', JSON.stringify(user));
+  };
+
+  // Handle registration
+  const handleRegister = (user: User) => {
+    setCurrentUser(user);
+    localStorage.setItem('demoUser', JSON.stringify(user));
+  };
+
+  // Handle logout
+  const handleLogout = () => {
+    setCurrentUser(null);
+    localStorage.removeItem('demoUser');
+  };
+
+  // Handle adding a payment method
+  const handleAddPaymentMethod = (paymentMethod: PaymentMethod) => {
+    if (!currentUser) return;
+    
+    const updatedUser = {
+      ...currentUser,
+      paymentMethods: [...(currentUser.paymentMethods || []), paymentMethod]
+    };
+    
+    // If this is the first payment method or marked as default, make it default
+    if (!currentUser.paymentMethods || currentUser.paymentMethods.length === 0 || paymentMethod.isDefault) {
+      updatedUser.paymentMethods = updatedUser.paymentMethods.map(pm => ({
+        ...pm,
+        isDefault: pm.id === paymentMethod.id
+      }));
+    }
+    
+    setCurrentUser(updatedUser);
+    localStorage.setItem('demoUser', JSON.stringify(updatedUser));
+  };
+
+  // Handle search
   const handleSearch = (query: string) => {
     toast({
       title: "Search initiated",
       description: `Searching for "${query}"`,
     });
-    // In a real app, this would trigger an API call
     console.log("Searching for:", query);
   };
 
+  // Handle terminal selection
   const handleSelectTerminal = (terminal: Terminal) => {
     setSelectedTerminalId(terminal.id);
     toast({
       title: "Terminal selected",
       description: `You selected ${terminal.name}`,
     });
-    // In a mobile view, close the sidebar after selection
+    
     if (window.innerWidth < 1024) {
       setSidebarOpen(false);
     }
   };
 
+  // Toggle dark mode
   const toggleDarkMode = () => {
     if (darkMode) {
       document.documentElement.classList.remove('dark');
@@ -135,7 +196,22 @@ const Index = () => {
             </div>
           </div>
           
-          <div className="flex items-center">
+          <div className="flex items-center gap-2">
+            {currentUser ? (
+              <UserProfile 
+                user={currentUser} 
+                onLogout={handleLogout} 
+                onAddPaymentMethod={() => setIsPaymentModalOpen(true)} 
+              />
+            ) : (
+              <button
+                onClick={() => setIsAuthModalOpen(true)}
+                className="flex items-center gap-1 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              >
+                <UserIcon size={20} />
+              </button>
+            )}
+            
             <button 
               onClick={toggleDarkMode}
               className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
@@ -183,7 +259,10 @@ const Index = () => {
         {/* Map */}
         <main className="flex-1 p-4 lg:p-6 z-20">
           <div className="h-full relative rounded-lg overflow-hidden shadow-xl">
-            <Map selectedTerminalId={selectedTerminalId} />
+            <Map 
+              selectedTerminalId={selectedTerminalId} 
+              user={currentUser || undefined}
+            />
             
             {/* Mobile search button */}
             <div className="lg:hidden absolute bottom-4 right-4 z-30">
@@ -198,6 +277,21 @@ const Index = () => {
           </div>
         </main>
       </div>
+
+      {/* Auth Modal */}
+      <AuthModal 
+        isOpen={isAuthModalOpen} 
+        onOpenChange={setIsAuthModalOpen} 
+        onLogin={handleLogin} 
+        onRegister={handleRegister} 
+      />
+
+      {/* Payment Method Modal */}
+      <PaymentMethodForm 
+        isOpen={isPaymentModalOpen} 
+        onOpenChange={setIsPaymentModalOpen} 
+        onAddPaymentMethod={handleAddPaymentMethod} 
+      />
     </div>
   );
 };
