@@ -1,10 +1,9 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Moon, Sun, BellRing, MapPin, CreditCard, Globe, Clock } from "lucide-react";
+import { ArrowLeft, Moon, Sun, BellRing, MapPin, CreditCard, Globe, Clock, Laptop } from "lucide-react";
 import { 
   Card, 
   CardContent, 
@@ -16,9 +15,9 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useTheme } from "@/components/theme/ThemeProvider";
 
 const Settings = () => {
-  const [darkMode, setDarkMode] = useState(false);
   const [notifications, setNotifications] = useState(true);
   const [locationSharing, setLocationSharing] = useState(true);
   const [preferredPayment, setPreferredPayment] = useState("card");
@@ -26,6 +25,7 @@ const Settings = () => {
   const [autoBooking, setAutoBooking] = useState(false);
   const [rideSharing, setRideSharing] = useState("ask");
   
+  const { theme, setTheme } = useTheme();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -38,7 +38,7 @@ const Settings = () => {
   };
 
   const handleReset = () => {
-    setDarkMode(false);
+    setTheme("system");
     setNotifications(true);
     setLocationSharing(true);
     setPreferredPayment("card");
@@ -80,29 +80,53 @@ const Settings = () => {
               <CardDescription>Customize how the app looks</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center justify-between">
-                <Label htmlFor="dark-mode">Dark Mode</Label>
-                <Switch 
-                  id="dark-mode" 
-                  checked={darkMode} 
-                  onCheckedChange={setDarkMode} 
-                />
-              </div>
+              <div className="space-y-6">
+                <div>
+                  <Label className="mb-2 block">Theme</Label>
+                  <RadioGroup 
+                    value={theme} 
+                    onValueChange={(value: "light" | "dark" | "system") => setTheme(value)}
+                    className="flex flex-col space-y-2"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="light" id="light" />
+                      <Label htmlFor="light" className="flex items-center">
+                        <Sun className="mr-2 h-4 w-4" />
+                        Light
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="dark" id="dark" />
+                      <Label htmlFor="dark" className="flex items-center">
+                        <Moon className="mr-2 h-4 w-4" />
+                        Dark
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="system" id="system" />
+                      <Label htmlFor="system" className="flex items-center">
+                        <Laptop className="mr-2 h-4 w-4" />
+                        System
+                      </Label>
+                    </div>
+                  </RadioGroup>
+                </div>
 
-              <div className="mt-6">
-                <Label htmlFor="language">Language</Label>
-                <Select value={language} onValueChange={setLanguage}>
-                  <SelectTrigger id="language" className="mt-1">
-                    <SelectValue placeholder="Select language" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="en">English</SelectItem>
-                    <SelectItem value="es">Español</SelectItem>
-                    <SelectItem value="fr">Français</SelectItem>
-                    <SelectItem value="de">Deutsch</SelectItem>
-                    <SelectItem value="zh">中文</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="mt-6">
+                  <Label htmlFor="language">Language</Label>
+                  <Select value={language} onValueChange={setLanguage}>
+                    <SelectTrigger id="language" className="mt-1">
+                      <SelectValue placeholder="Select language" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="en">English</SelectItem>
+                      <SelectItem value="es">Español</SelectItem>
+                      <SelectItem value="fr">Français</SelectItem>
+                      <SelectItem value="de">Deutsch</SelectItem>
+                      <SelectItem value="zh">中文</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </CardContent>
           </Card>
