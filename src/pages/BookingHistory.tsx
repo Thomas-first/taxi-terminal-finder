@@ -120,7 +120,7 @@ const BookingHistory = () => {
             pickupLocation: [51.505, -0.09],
             destination: "Airport",
             fare: 25.50,
-            status: "completed",
+            status: "completed" as const,
             createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // 1 week ago
             completedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000 + 30 * 60 * 1000), // 1 week ago + 30min
             isShared: false,
@@ -137,7 +137,7 @@ const BookingHistory = () => {
             pickupLocation: [51.505, -0.09],
             destination: "Downtown",
             fare: 12.75,
-            status: "scheduled",
+            status: "scheduled" as const,
             createdAt: new Date(),
             scheduledFor: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // 3 days in future
             isShared: true,
@@ -152,7 +152,7 @@ const BookingHistory = () => {
             pickupLocation: [51.505, -0.09],
             destination: "Shopping Mall",
             fare: 15.25,
-            status: "in-progress",
+            status: "in-progress" as const,
             createdAt: new Date(Date.now() - 15 * 60 * 1000), // 15 min ago
             isShared: false,
             passengers: 2
@@ -166,7 +166,7 @@ const BookingHistory = () => {
             pickupLocation: [51.505, -0.09],
             destination: "Business Park",
             fare: 18.50,
-            status: "completed",
+            status: "completed" as const,
             createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // 2 days ago
             completedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000 + 25 * 60 * 1000), // 2 days ago + 25min
             isShared: false,
@@ -183,7 +183,7 @@ const BookingHistory = () => {
             pickupLocation: [51.505, -0.09],
             destination: "Hospital",
             fare: 22.00,
-            status: "cancelled",
+            status: "cancelled" as const,
             createdAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000), // 4 days ago
             isShared: false,
             passengers: 1

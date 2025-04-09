@@ -141,7 +141,15 @@ const FavoriteRoutes: React.FC<FavoriteRoutesProps> = ({
       // Update existing favorite
       setFavorites(favorites.map(f => 
         f.id === editingFavorite.id 
-          ? { ...values, id: f.id, frequentlyUsed: f.frequentlyUsed }
+          ? { 
+              ...values, 
+              id: f.id, 
+              frequentlyUsed: f.frequentlyUsed,
+              name: values.name,
+              address: values.address,
+              icon: values.icon,
+              terminalId: values.terminalId 
+            }
           : f
       ));
       
@@ -152,8 +160,11 @@ const FavoriteRoutes: React.FC<FavoriteRoutesProps> = ({
     } else {
       // Add new favorite
       const newFavorite: FavoriteDestination = {
-        ...values,
         id: `favorite-${Date.now()}`,
+        name: values.name,
+        address: values.address,
+        icon: values.icon,
+        terminalId: values.terminalId,
         frequentlyUsed: false
       };
       
