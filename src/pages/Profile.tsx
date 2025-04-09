@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, User } from "lucide-react";
+import { ArrowLeft, User, Clock, Settings as SettingsIcon } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import EnhancedUserProfileSettings from "@/components/user/EnhancedUserProfileSettings";
 import TravelConnections from "@/components/travel/TravelConnections";
@@ -138,6 +138,14 @@ const Profile = () => {
     navigate('/');
   };
 
+  const navigateToSettings = () => {
+    navigate('/settings');
+  };
+
+  const navigateToBookingHistory = () => {
+    navigate('/booking-history');
+  };
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -165,14 +173,26 @@ const Profile = () => {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <header className="bg-white dark:bg-gray-800 shadow-md p-4">
-        <div className="container mx-auto flex items-center">
-          <Button variant="ghost" onClick={handleBack} className="mr-4">
-            <ArrowLeft size={16} className="mr-2" />
-            Back
-          </Button>
+        <div className="container mx-auto flex items-center justify-between">
           <div className="flex items-center">
-            <User className="text-primary mr-2" size={24} />
-            <h1 className="text-xl font-bold">User Profile</h1>
+            <Button variant="ghost" onClick={handleBack} className="mr-4">
+              <ArrowLeft size={16} className="mr-2" />
+              Back
+            </Button>
+            <div className="flex items-center">
+              <User className="text-primary mr-2" size={24} />
+              <h1 className="text-xl font-bold">User Profile</h1>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={navigateToBookingHistory} className="flex items-center gap-1">
+              <Clock size={16} />
+              <span className="hidden sm:inline">Bookings</span>
+            </Button>
+            <Button variant="outline" size="sm" onClick={navigateToSettings} className="flex items-center gap-1">
+              <SettingsIcon size={16} />
+              <span className="hidden sm:inline">Settings</span>
+            </Button>
           </div>
         </div>
       </header>
