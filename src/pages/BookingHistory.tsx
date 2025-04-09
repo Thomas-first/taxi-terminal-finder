@@ -456,7 +456,7 @@ const BookingHistory = () => {
                                 onClick={() => {
                                   // In a real app, this would call an API to cancel the booking
                                   const updatedHistory = user.bookingHistory.map(b => 
-                                    b.id === booking.id ? { ...b, status: "cancelled" } : b
+                                    b.id === booking.id ? { ...b, status: "cancelled" as const } : b
                                   );
                                   setUser({
                                     ...user,
