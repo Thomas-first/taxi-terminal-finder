@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import {
   Sheet,
@@ -9,7 +8,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { User, Booking } from "../map/types";
+import { User, Booking, TravelConnection } from "../map/types";
 import { useToast } from "@/hooks/use-toast";
 import {
   CreditCard,
@@ -22,6 +21,9 @@ import {
   ChevronRight,
   Calendar,
   LucideIcon,
+  UserCircle,
+  Plane,
+  MessageSquare
 } from "lucide-react";
 import {
   Tabs,
@@ -37,6 +39,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { useNavigate } from "react-router-dom";
 
 interface UserProfileProps {
   user: User;
@@ -47,8 +50,8 @@ interface UserProfileProps {
 const UserProfile: React.FC<UserProfileProps> = ({ user, onLogout, onAddPaymentMethod }) => {
   const [isOpen, setIsOpen] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
-  // Format date for bookings
   const formatBookingDate = (date: Date) => {
     return new Date(date).toLocaleDateString('en-US', {
       month: 'short',
@@ -58,7 +61,6 @@ const UserProfile: React.FC<UserProfileProps> = ({ user, onLogout, onAddPaymentM
     });
   };
 
-  // Render a booking card
   const renderBookingCard = (booking: Booking) => {
     const isUpcoming = 
       booking.status === 'scheduled' || 
@@ -138,7 +140,6 @@ const UserProfile: React.FC<UserProfileProps> = ({ user, onLogout, onAddPaymentM
     );
   };
 
-  // Define menu items
   interface MenuItem {
     label: string;
     icon: LucideIcon;
@@ -146,6 +147,14 @@ const UserProfile: React.FC<UserProfileProps> = ({ user, onLogout, onAddPaymentM
   }
 
   const menuItems: MenuItem[] = [
+    {
+      label: "Edit Profile",
+      icon: UserCircle,
+      onClick: () => {
+        navigate('/profile');
+        setIsOpen(false);
+      },
+    },
     {
       label: "Payment Methods",
       icon: CreditCard,
@@ -222,6 +231,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ user, onLogout, onAddPaymentM
         <Tabs defaultValue="bookings" className="w-full overflow-hidden flex flex-col h-[calc(100vh-200px)]">
           <TabsList className="w-full justify-start px-4 pt-2">
             <TabsTrigger value="bookings">Bookings</TabsTrigger>
+            <TabsTrigger value="travel">Travel</TabsTrigger>
             <TabsTrigger value="account">Account</TabsTrigger>
           </TabsList>
           
@@ -245,6 +255,83 @@ const UserProfile: React.FC<UserProfileProps> = ({ user, onLogout, onAddPaymentM
                 {user.bookingHistory
                   .filter(b => b.status === 'completed' || b.status === 'cancelled')
                   .map(renderBookingCard)}
+              </div>
+            )}
+          </TabsContent>
+          
+          <TabsContent value="travel" className="flex-1 overflow-auto p-4">
+            {(!user.travelConnections || user.travelConnections.length === 0) ? (
+              <div className="text-center py-8">
+                <Plane className="mx-auto mb-2 text-gray-400" size={36} />
+                <h3 className="font-medium">No travel connections</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                  Connect your travel bookings to arrange taxi pickups
+                </p>
+                <Button 
+                  variant="outline" 
+                  onClick={() => navigate('/profile')}
+                  className="mx-auto"
+                >
+                  Connect Travel Services
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <h3 className="font-medium mb-2">Connected Travel</h3>
+                {user.travelConnections.map((connection: TravelConnection) => (
+                  <Card key={connection.id} className="mb-3">
+                    <CardHeader className="p-3 pb-0">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <CardTitle className="text-sm">{connection.serviceProvider}</CardTitle>
+                          <CardDescription className="text-xs">
+                            {connection.type.charAt(0).toUpperCase() + connection.type.slice(1)} {connection.confirmationCode}
+                          </CardDescription>
+                        </div>
+                        <div className={`px-2 py-1 rounded-full text-xs font-medium 
+                          ${connection.status === 'on-time' ? 'bg-green-100 text-green-800' : 
+                            connection.status === 'delayed' ? 'bg-yellow-100 text-yellow-800' : 
+                            'bg-gray-100 text-gray-800'}`}>
+                          {connection.status || 'Scheduled'}
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="p-3 pb-0 text-xs">
+                      <p className="flex items-center gap-1 mb-1">
+                        <Clock size={12} />
+                        {new Date(connection.departureTime).toLocaleDateString()} at {new Date(connection.departureTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                      </p>
+                      <p className="flex items-center gap-1">
+                        <MapPin size={12} />
+                        {connection.origin} to {connection.destination}
+                      </p>
+                    </CardContent>
+                    <CardFooter className="p-3 pt-2 flex justify-end">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="text-xs h-7"
+                        onClick={() => {
+                          toast({
+                            title: "Taxi Booking",
+                            description: `In a real app, this would open the booking form for your ${connection.type} arrival`,
+                          });
+                        }}
+                      >
+                        Book Taxi
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                ))}
+                <div className="mt-4 flex justify-center">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => navigate('/profile')}
+                  >
+                    Manage Travel Connections
+                  </Button>
+                </div>
               </div>
             )}
           </TabsContent>

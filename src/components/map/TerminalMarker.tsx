@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
@@ -8,6 +7,9 @@ import { Button } from "@/components/ui/button";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { useToast } from "@/hooks/use-toast";
 import { Calendar, Clock, DollarSign, Star, Users, Car } from "lucide-react";
+import SurgePricingIndicator from '../pricing/SurgePricingIndicator';
+import DriverMatchingPanel from '../matching/DriverMatchingPanel';
+import RideSharingOptions from '../sharing/RideSharingOptions';
 
 interface TerminalMarkerProps {
   terminal: Terminal;
@@ -28,9 +30,11 @@ const TerminalMarker: React.FC<TerminalMarkerProps> = ({
   const [showScheduler, setShowScheduler] = useState(false);
   const [scheduledDate, setScheduledDate] = useState<Date | null>(null);
   const [isBookingInProgress, setIsBookingInProgress] = useState(false);
+  const [showDriverMatching, setShowDriverMatching] = useState(false);
+  const [showRideSharing, setShowRideSharing] = useState(false);
+  const [selectedTaxi, setSelectedTaxi] = useState<Taxi | null>(null);
   const { toast } = useToast();
   
-  // Create custom taxi icon
   const taxiIcon = L.divIcon({
     className: 'taxi-marker-icon',
     html: `<div class="w-8 h-8 ${isSelected ? 'bg-primary' : isNew ? 'bg-green-500' : 'bg-taxi'} text-black flex items-center justify-center rounded-full shadow-lg ${isSelected ? 'scale-125' : ''} transition-transform duration-200">${isNew ? '📍' : '🚕'}</div>`,
@@ -38,12 +42,10 @@ const TerminalMarker: React.FC<TerminalMarkerProps> = ({
     iconAnchor: [16, 16]
   });
 
-  // Get price for a specific destination
   const getPriceForDestination = (destination: string) => {
     if (!terminal.prices) return 'N/A';
     const priceInfo = terminal.prices.find(p => p.destination === destination);
     
-    // Apply surge pricing if available
     if (priceInfo && terminal.surgeMultiplier && terminal.surgeMultiplier > 1) {
       const basePrice = priceInfo.price;
       const surgePrice = basePrice * terminal.surgeMultiplier;
@@ -53,15 +55,13 @@ const TerminalMarker: React.FC<TerminalMarkerProps> = ({
     return priceInfo ? `$${priceInfo.price.toFixed(2)}` : 'N/A';
   };
 
-  // Calculate distance from user location
   const getDistanceFromUser = () => {
     if (!userLocation) return 'Unknown';
     
-    // Simple distance calculation (Haversine formula would be more accurate)
     const [lat1, lon1] = userLocation;
     const [lat2, lon2] = terminal.coordinates;
     
-    const R = 6371; // Earth radius in km
+    const R = 6371;
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;
     const a = 
@@ -74,15 +74,23 @@ const TerminalMarker: React.FC<TerminalMarkerProps> = ({
     return `${distance.toFixed(1)} km`;
   };
 
-  // Handle selecting a destination for booking
   const handleSelectDestination = (destination: string) => {
     setSelectedDestination(destination);
     window.showRoute(terminal.id);
   };
 
-  // Handle booking a taxi
   const handleBookTaxi = async () => {
     if (!selectedDestination) return;
+    
+    if (terminal.rideSharingEnabled && !showRideSharing && !selectedTaxi) {
+      setShowRideSharing(true);
+      return;
+    }
+    
+    if (terminal.availableTaxis && terminal.availableTaxis.length > 0 && !showDriverMatching && !selectedTaxi) {
+      setShowDriverMatching(true);
+      return;
+    }
     
     setIsBookingInProgress(true);
     try {
@@ -107,7 +115,7 @@ const TerminalMarker: React.FC<TerminalMarkerProps> = ({
       } else {
         toast({
           title: "Booking Simulation",
-          description: `In a real app, we would now book a taxi to ${selectedDestination}${scheduledDate ? ' for ' + scheduledDate.toLocaleString() : ''}`,
+          description: `In a real app, we would now book a taxi to ${selectedDestination}${scheduledDate ? ' for ' + scheduledDate.toLocaleString() : ''}${selectedTaxi ? ' with driver ' + selectedTaxi.driverName : ''}`,
         });
       }
     } catch (error) {
@@ -121,7 +129,43 @@ const TerminalMarker: React.FC<TerminalMarkerProps> = ({
     }
   };
 
-  // Render the taxi details in a hover card
+  const handleRideSharingSelect = async (sharingOption: any) => {
+    try {
+      toast({
+        title: "Ride Sharing Selected",
+        description: `You'll save ${sharingOption.potentialSavings}% by sharing this ride!`,
+      });
+      
+      if (terminal.availableTaxis && terminal.availableTaxis.length > 0 && !selectedTaxi) {
+        setShowRideSharing(false);
+        setShowDriverMatching(true);
+        return;
+      }
+      
+      await handleBookTaxi();
+    } catch (error) {
+      console.error("Error selecting shared ride:", error);
+      toast({
+        title: "Error",
+        description: "Could not book shared ride. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDriverSelect = (taxi: Taxi) => {
+    setSelectedTaxi(taxi);
+    setShowDriverMatching(false);
+    
+    setTimeout(() => {
+      handleBookTaxi();
+    }, 500);
+  };
+
+  const handleSurgePricingUpdate = (multiplier: number) => {
+    console.log(`Surge pricing updated: ${multiplier}x`);
+  };
+
   const renderTaxiDetails = (taxi: Taxi) => (
     <HoverCard key={taxi.id}>
       <HoverCardTrigger asChild>
@@ -186,7 +230,16 @@ const TerminalMarker: React.FC<TerminalMarkerProps> = ({
               )}
             </div>
             
-            {terminal.availableTaxis && terminal.availableTaxis.length > 0 && (
+            {terminal.surgeMultiplier === undefined && (
+              <div className="mt-2">
+                <SurgePricingIndicator 
+                  terminal={terminal} 
+                  onPricingUpdate={handleSurgePricingUpdate} 
+                />
+              </div>
+            )}
+            
+            {terminal.availableTaxis && terminal.availableTaxis.length > 0 && !showDriverMatching && (
               <div className="mt-3">
                 <h4 className="font-semibold text-sm">Available Taxis</h4>
                 <div className="flex flex-wrap gap-1 mt-1">
@@ -200,7 +253,7 @@ const TerminalMarker: React.FC<TerminalMarkerProps> = ({
               </div>
             )}
             
-            {terminal.destinations.length > 0 && (
+            {terminal.destinations.length > 0 && !showDriverMatching && !showRideSharing && (
               <div className="mt-3">
                 <h4 className="font-semibold text-sm">Destinations & Pricing</h4>
                 <Table className="mt-1">
@@ -232,7 +285,35 @@ const TerminalMarker: React.FC<TerminalMarkerProps> = ({
               </div>
             )}
             
-            {selectedDestination && (
+            {showDriverMatching && terminal.availableTaxis && terminal.availableTaxis.length > 0 && (
+              <div className="mt-3">
+                <DriverMatchingPanel 
+                  availableTaxis={terminal.availableTaxis}
+                  onDriverSelect={handleDriverSelect}
+                />
+              </div>
+            )}
+            
+            {showRideSharing && userLocation && selectedDestination && (
+              <div className="mt-3">
+                <RideSharingOptions 
+                  pickupLocation={userLocation}
+                  destination={selectedDestination}
+                  onShareSelect={handleRideSharingSelect}
+                  onSkip={() => {
+                    setShowRideSharing(false);
+                    
+                    if (terminal.availableTaxis && terminal.availableTaxis.length > 0) {
+                      setShowDriverMatching(true);
+                    } else {
+                      handleBookTaxi();
+                    }
+                  }}
+                />
+              </div>
+            )}
+            
+            {selectedDestination && !showDriverMatching && !showRideSharing && (
               <div className="mt-3 p-3 bg-gray-100 dark:bg-gray-700 rounded">
                 <h4 className="font-semibold text-sm">Booking Details</h4>
                 <p className="text-sm mt-1">
@@ -244,6 +325,11 @@ const TerminalMarker: React.FC<TerminalMarkerProps> = ({
                 {userLocation && (
                   <p className="text-sm mt-1">
                     <span className="font-medium">Distance:</span> {getDistanceFromUser()}
+                  </p>
+                )}
+                {selectedTaxi && (
+                  <p className="text-sm mt-1">
+                    <span className="font-medium">Driver:</span> {selectedTaxi.driverName} ({selectedTaxi.rating.toFixed(1)} ★)
                   </p>
                 )}
                 
