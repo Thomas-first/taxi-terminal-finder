@@ -3,17 +3,45 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, User, Clock, Settings as SettingsIcon } from "lucide-react";
+import { ArrowLeft, User, Clock, Settings as SettingsIcon, CreditCard, Heart, BarChart } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import EnhancedUserProfileSettings from "@/components/user/EnhancedUserProfileSettings";
 import TravelConnections from "@/components/travel/TravelConnections";
-import { User as UserType, TravelConnection } from "@/components/map/types";
+import { User as UserType, TravelConnection, Terminal } from "@/components/map/types";
+import PaymentMethodManager from "@/components/payment/PaymentMethodManager";
+import TripAnalytics from "@/components/analytics/TripAnalytics";
+import FavoriteRoutes from "@/components/routes/FavoriteRoutes";
 
 const Profile = () => {
   const [user, setUser] = useState<UserType | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  // Sample terminals for favorite routes
+  const terminals = [
+    {
+      id: 1,
+      name: "Central Taxi Terminal",
+      coordinates: [51.505, -0.09] as [number, number],
+      taxiCount: 15,
+      destinations: ["Downtown", "Airport", "Shopping Mall"]
+    },
+    {
+      id: 2,
+      name: "North Station Taxis",
+      coordinates: [51.515, -0.08] as [number, number],
+      taxiCount: 8,
+      destinations: ["City Center", "Beach", "University"]
+    },
+    {
+      id: 3,
+      name: "East Terminal",
+      coordinates: [51.510, -0.07] as [number, number],
+      taxiCount: 12,
+      destinations: ["Hospital", "Business Park", "Stadium"]
+    }
+  ];
 
   useEffect(() => {
     // Simulate loading user data
@@ -138,6 +166,10 @@ const Profile = () => {
     navigate('/');
   };
 
+  const handleBookNow = (terminalId: number, destination: string) => {
+    navigate(`/?terminal=${terminalId}&destination=${destination}`);
+  };
+
   const navigateToSettings = () => {
     navigate('/settings');
   };
@@ -201,7 +233,10 @@ const Profile = () => {
         <Tabs defaultValue="profile" className="w-full">
           <TabsList className="mb-4">
             <TabsTrigger value="profile">Profile Settings</TabsTrigger>
+            <TabsTrigger value="payments">Payment Methods</TabsTrigger>
             <TabsTrigger value="travel">Travel Connections</TabsTrigger>
+            <TabsTrigger value="favorites">Favorite Routes</TabsTrigger>
+            <TabsTrigger value="analytics">Trip Analytics</TabsTrigger>
           </TabsList>
           
           <TabsContent value="profile" className="bg-white dark:bg-gray-800 rounded-lg shadow-lg">
@@ -211,11 +246,31 @@ const Profile = () => {
             />
           </TabsContent>
           
+          <TabsContent value="payments" className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+            <PaymentMethodManager
+              user={user}
+              onSave={handleSaveProfile}
+            />
+          </TabsContent>
+          
           <TabsContent value="travel" className="bg-white dark:bg-gray-800 rounded-lg shadow-lg">
             <TravelConnections 
               user={user} 
               onConnectionAdd={handleAddTravelConnection} 
             />
+          </TabsContent>
+          
+          <TabsContent value="favorites" className="bg-white dark:bg-gray-800 rounded-lg shadow-lg">
+            <FavoriteRoutes
+              user={user}
+              terminals={terminals}
+              onSave={handleSaveProfile}
+              onBookNow={handleBookNow}
+            />
+          </TabsContent>
+          
+          <TabsContent value="analytics" className="bg-white dark:bg-gray-800 rounded-lg shadow-lg">
+            <TripAnalytics user={user} />
           </TabsContent>
         </Tabs>
       </main>

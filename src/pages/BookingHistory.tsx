@@ -1,38 +1,24 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
 import { 
   ArrowLeft, 
-  Calendar, 
-  Search, 
+  Clock, 
   CreditCard, 
-  Star, 
-  MapPin, 
-  Filter,
-  Download,
+  Filter, 
+  ChevronLeft, 
+  ChevronRight,
   FileText,
-  Clock,
-  CheckCircle,
-  XCircle
+  MapPin,
+  User,
+  Calendar
 } from "lucide-react";
-import { Booking } from "@/components/map/types";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
+import { 
+  Tabs, 
+  TabsContent, 
+  TabsList, 
+  TabsTrigger 
 } from "@/components/ui/tabs";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -41,40 +27,90 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { User as UserType, Booking, Taxi } from "@/components/map/types";
+import ReceiptGenerator from "@/components/bookings/ReceiptGenerator";
+import TripAnalytics from "@/components/analytics/TripAnalytics";
+import RealTimeTracking from "@/components/tracking/RealTimeTracking";
+import FavoriteRoutes from "@/components/routes/FavoriteRoutes";
 
 const BookingHistory = () => {
-  const [bookings, setBookings] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [filter, setFilter] = useState("all");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
-  const { toast } = useToast();
+  const [user, setUser] = useState<UserType | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [dateFilter, setDateFilter] = useState("all");
+  const [activeBookingId, setActiveBookingId] = useState<string | null>(null);
   const navigate = useNavigate();
+  
+  // Sample terminals for favorite routes
+  const terminals = [
+    {
+      id: 1,
+      name: "Central Taxi Terminal",
+      coordinates: [51.505, -0.09] as [number, number],
+      taxiCount: 15,
+      destinations: ["Downtown", "Airport", "Shopping Mall"]
+    },
+    {
+      id: 2,
+      name: "North Station Taxis",
+      coordinates: [51.515, -0.08] as [number, number],
+      taxiCount: 8,
+      destinations: ["City Center", "Beach", "University"]
+    },
+    {
+      id: 3,
+      name: "East Terminal",
+      coordinates: [51.510, -0.07] as [number, number],
+      taxiCount: 12,
+      destinations: ["Hospital", "Business Park", "Stadium"]
+    }
+  ];
+  
+  // Sample taxi for tracking demo
+  const sampleTaxi: Taxi = {
+    id: 101,
+    driverId: "driver-101",
+    driverName: "John Driver",
+    vehicleType: "Sedan",
+    licensePlate: "TX1234",
+    rating: 4.8,
+    isAvailable: false,
+    currentLocation: [51.500, -0.095],
+    passengerCapacity: 4,
+    features: ["WiFi", "Air Conditioning", "Child Seat"],
+    languages: ["English", "Spanish"],
+  };
 
   useEffect(() => {
-    // Simulating API call to fetch booking history
-    const fetchBookings = () => {
-      setIsLoading(true);
-      
-      // Mocked bookings data
-      setTimeout(() => {
-        const mockBookings: Booking[] = [
+    // Simulate loading user data
+    setIsLoading(true);
+    setTimeout(() => {
+      // Create a mock user for demo purposes
+      const mockUser: UserType = {
+        id: "user-1",
+        email: "demo@example.com",
+        name: "Demo User",
+        phone: "+1 555-123-4567",
+        paymentMethods: [
+          {
+            id: "payment-1",
+            type: "card",
+            lastFour: "4242",
+            isDefault: true
+          }
+        ],
+        favoriteTerminals: [1, 3],
+        bookingHistory: [
           {
             id: "booking-1",
             userId: "user-1",
@@ -85,8 +121,8 @@ const BookingHistory = () => {
             destination: "Airport",
             fare: 25.50,
             status: "completed",
-            createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-            completedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000 + 45 * 60 * 1000),
+            createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // 1 week ago
+            completedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000 + 30 * 60 * 1000), // 1 week ago + 30min
             isShared: false,
             passengers: 1,
             rating: 4.5,
@@ -94,110 +130,146 @@ const BookingHistory = () => {
           },
           {
             id: "booking-2",
-            userId: "user-1",
+            userId: "user-1", 
             terminalId: 2,
             taxiId: 102,
             driverId: "driver-102",
-            pickupLocation: [51.51, -0.1],
-            destination: "Downtown Hotel",
-            fare: 15.75,
+            pickupLocation: [51.505, -0.09],
+            destination: "Downtown",
+            fare: 12.75,
             status: "scheduled",
             createdAt: new Date(),
-            scheduledFor: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
+            scheduledFor: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // 3 days in future
             isShared: true,
             passengers: 1
           },
           {
             id: "booking-3",
-            userId: "user-1",
-            terminalId: 3,
+            userId: "user-1", 
+            terminalId: 1,
             taxiId: 103,
             driverId: "driver-103",
-            pickupLocation: [51.52, -0.11],
+            pickupLocation: [51.505, -0.09],
             destination: "Shopping Mall",
-            fare: 12.25,
+            fare: 15.25,
             status: "in-progress",
-            createdAt: new Date(Date.now() - 30 * 60 * 1000),
+            createdAt: new Date(Date.now() - 15 * 60 * 1000), // 15 min ago
             isShared: false,
             passengers: 2
           },
           {
             id: "booking-4",
-            userId: "user-1",
-            terminalId: 1,
+            userId: "user-1", 
+            terminalId: 3,
             taxiId: 104,
             driverId: "driver-104",
             pickupLocation: [51.505, -0.09],
-            destination: "Restaurant District",
-            fare: 18.90,
+            destination: "Business Park",
+            fare: 18.50,
             status: "completed",
-            createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-            completedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000 + 25 * 60 * 1000),
+            createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // 2 days ago
+            completedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000 + 25 * 60 * 1000), // 2 days ago + 25min
             isShared: false,
-            passengers: 4,
-            rating: 3.0,
-            feedback: "Driver took a longer route than necessary"
+            passengers: 1,
+            rating: 5,
+            feedback: "Excellent service and clean car"
           },
           {
             id: "booking-5",
-            userId: "user-1",
-            terminalId: 4,
+            userId: "user-1", 
+            terminalId: 2,
             taxiId: 105,
             driverId: "driver-105",
-            pickupLocation: [51.53, -0.12],
-            destination: "Concert Hall",
+            pickupLocation: [51.505, -0.09],
+            destination: "Hospital",
             fare: 22.00,
             status: "cancelled",
-            createdAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
+            createdAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000), // 4 days ago
             isShared: false,
-            passengers: 2
+            passengers: 1
           }
-        ];
-        
-        setBookings(mockBookings);
-        setIsLoading(false);
-      }, 1000);
-    };
-    
-    fetchBookings();
+        ],
+        loyaltyPoints: 75,
+        preferences: {
+          preferredPaymentMethod: "payment-1",
+          preferredVehicleType: "Sedan",
+          notificationsEnabled: true,
+          darkModeEnabled: false,
+          preferredDriverLanguages: ["English", "Spanish"],
+          minimumDriverRating: 4,
+          rideSharingPreference: "ask",
+          maxWaitTime: 15
+        },
+        frequentDestinations: ["Airport", "Downtown", "Shopping Mall"]
+      };
+      
+      setUser(mockUser);
+      setIsLoading(false);
+      
+      // Set an active booking (for tracking demo)
+      const inProgressBooking = mockUser.bookingHistory.find(b => b.status === "in-progress");
+      if (inProgressBooking) {
+        setActiveBookingId(inProgressBooking.id);
+      }
+    }, 1000);
   }, []);
-
+  
   const handleBack = () => {
-    navigate('/profile');
+    navigate('/');
   };
-
-  const filterBookings = () => {
-    let filtered = [...bookings];
-    
-    // Apply status filter
-    if (filter !== "all") {
-      filtered = filtered.filter(booking => booking.status === filter);
-    }
-    
-    // Apply search filter
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(booking => 
-        booking.destination.toLowerCase().includes(query) ||
-        booking.id.toLowerCase().includes(query)
-      );
-    }
-    
-    return filtered;
+  
+  const handleUpdate = (updatedUser: UserType) => {
+    setUser(updatedUser);
   };
-
-  const getStatusBadgeColor = (status: string) => {
-    switch(status) {
-      case 'completed': return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100";
-      case 'scheduled': return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100";
-      case 'in-progress': return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100";
-      case 'cancelled': return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100";
-      default: return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100";
-    }
+  
+  const handleBookNow = (terminalId: number, destination: string) => {
+    navigate(`/?terminal=${terminalId}&destination=${destination}`);
   };
-
-  const formatDateTime = (date: Date) => {
-    return new Date(date).toLocaleString('en-US', {
+  
+  const filteredBookings = () => {
+    if (!user) return [];
+    
+    return user.bookingHistory
+      .filter(booking => {
+        // Status filter
+        if (statusFilter !== "all" && booking.status !== statusFilter) {
+          return false;
+        }
+        
+        // Date filter
+        if (dateFilter === "today") {
+          const today = new Date();
+          const bookingDate = new Date(booking.createdAt);
+          return (
+            bookingDate.getDate() === today.getDate() &&
+            bookingDate.getMonth() === today.getMonth() &&
+            bookingDate.getFullYear() === today.getFullYear()
+          );
+        } else if (dateFilter === "week") {
+          const weekAgo = new Date();
+          weekAgo.setDate(weekAgo.getDate() - 7);
+          return new Date(booking.createdAt) >= weekAgo;
+        } else if (dateFilter === "month") {
+          const monthAgo = new Date();
+          monthAgo.setMonth(monthAgo.getMonth() - 1);
+          return new Date(booking.createdAt) >= monthAgo;
+        }
+        
+        return true;
+      })
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  };
+  
+  // Pagination
+  const itemsPerPage = 5;
+  const totalPages = Math.ceil(filteredBookings().length / itemsPerPage);
+  const currentBookings = filteredBookings().slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+  
+  const formatDate = (date: Date) => {
+    return new Date(date).toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
@@ -205,370 +277,254 @@ const BookingHistory = () => {
       minute: '2-digit'
     });
   };
-
-  const handleViewDetails = (booking: Booking) => {
-    setSelectedBooking(booking);
-  };
-
-  const handleRateBooking = (booking: Booking) => {
-    if (booking.rating) {
-      toast({
-        title: "Already Rated",
-        description: "You've already rated this trip.",
-      });
-      return;
+  
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "completed":
+        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100";
+      case "scheduled":
+        return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100";
+      case "in-progress":
+        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100";
+      case "cancelled":
+        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100";
+      default:
+        return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100";
     }
-    
-    toast({
-      title: "Rating Feature",
-      description: "In a real app, this would open the rating UI.",
-    });
   };
-
-  const handleCancelBooking = (booking: Booking) => {
-    toast({
-      title: "Cancellation Feature",
-      description: "In a real app, this would cancel your booking.",
-    });
+  
+  const getActiveBooking = () => {
+    if (!user || !activeBookingId) return null;
+    return user.bookingHistory.find(b => b.id === activeBookingId);
   };
+  
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+  
+  if (!user) {
+    return (
+      <div className="container mx-auto p-4">
+        <div className="text-center p-8">
+          <User size={48} className="mx-auto text-gray-400 mb-4" />
+          <h1 className="text-2xl font-bold mb-2">User Not Found</h1>
+          <p className="text-gray-500 mb-6">
+            Could not load user profile information
+          </p>
+          <Button onClick={handleBack}>
+            <ArrowLeft size={16} className="mr-2" />
+            Back to Home
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <header className="bg-white dark:bg-gray-800 shadow-md p-4">
-        <div className="container mx-auto flex items-center">
-          <Button variant="ghost" onClick={handleBack} className="mr-4">
-            <ArrowLeft size={16} className="mr-2" />
-            Back
-          </Button>
-          <h1 className="text-xl font-bold">Booking History</h1>
+        <div className="container mx-auto flex items-center justify-between">
+          <div className="flex items-center">
+            <Button variant="ghost" onClick={handleBack} className="mr-4">
+              <ArrowLeft size={16} className="mr-2" />
+              Back
+            </Button>
+            <div className="flex items-center">
+              <Clock className="text-primary mr-2" size={24} />
+              <h1 className="text-xl font-bold">Booking History</h1>
+            </div>
+          </div>
         </div>
       </header>
 
       <main className="container mx-auto py-6 px-4">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-          <div className="relative w-full md:w-auto flex-grow md:max-w-md">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-            <Input
-              placeholder="Search by destination or booking ID"
-              className="pl-10"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+        {getActiveBooking() && (
+          <div className="mb-6">
+            <RealTimeTracking 
+              booking={getActiveBooking()!} 
+              taxi={sampleTaxi}
             />
           </div>
+        )}
+        
+        <Tabs defaultValue="bookings" className="w-full">
+          <TabsList className="mb-4">
+            <TabsTrigger value="bookings">Your Bookings</TabsTrigger>
+            <TabsTrigger value="analytics">Trip Analytics</TabsTrigger>
+            <TabsTrigger value="favorites">Favorite Routes</TabsTrigger>
+          </TabsList>
           
-          <div className="flex flex-col sm:flex-row w-full md:w-auto gap-2">
-            <Select value={filter} onValueChange={setFilter}>
-              <SelectTrigger className="w-full sm:w-[180px]">
-                <SelectValue placeholder="Filter by status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Bookings</SelectItem>
-                <SelectItem value="completed">Completed</SelectItem>
-                <SelectItem value="scheduled">Scheduled</SelectItem>
-                <SelectItem value="in-progress">In Progress</SelectItem>
-                <SelectItem value="cancelled">Cancelled</SelectItem>
-              </SelectContent>
-            </Select>
+          <TabsContent value="bookings" className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-semibold">Your Booking History</h2>
+              <div className="flex gap-2">
+                <Select
+                  value={statusFilter}
+                  onValueChange={setStatusFilter}
+                >
+                  <SelectTrigger className="w-[140px]">
+                    <SelectValue placeholder="Filter by status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Statuses</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="scheduled">Scheduled</SelectItem>
+                    <SelectItem value="in-progress">In Progress</SelectItem>
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                  </SelectContent>
+                </Select>
+                
+                <Select
+                  value={dateFilter}
+                  onValueChange={setDateFilter}
+                >
+                  <SelectTrigger className="w-[140px]">
+                    <SelectValue placeholder="Filter by date" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Time</SelectItem>
+                    <SelectItem value="today">Today</SelectItem>
+                    <SelectItem value="week">This Week</SelectItem>
+                    <SelectItem value="month">This Month</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
             
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="gap-2">
-                  <Download size={16} />
-                  Export
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem>
-                  <FileText className="mr-2 h-4 w-4" />
-                  <span>Export as PDF</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <FileText className="mr-2 h-4 w-4" />
-                  <span>Export as CSV</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
-
-        {isLoading ? (
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-          </div>
-        ) : (
-          <>
-            {filterBookings().length === 0 ? (
-              <div className="text-center py-16 bg-white dark:bg-gray-800 rounded-lg shadow">
-                <Clock className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+            {currentBookings.length === 0 ? (
+              <div className="text-center py-8">
+                <Clock className="mx-auto h-12 w-12 text-gray-300 mb-4" />
                 <h3 className="text-lg font-medium mb-2">No bookings found</h3>
-                <p className="text-gray-500 dark:text-gray-400 max-w-md mx-auto mb-6">
-                  {searchQuery || filter !== "all" 
-                    ? "Try adjusting your filters to see more results." 
-                    : "You don't have any taxi bookings yet. Book your first ride!"}
+                <p className="text-gray-500 mb-4">
+                  {statusFilter !== "all" || dateFilter !== "all"
+                    ? "Try changing your filters to see more results"
+                    : "You don't have any booking history yet"}
                 </p>
-                {(searchQuery || filter !== "all") && (
-                  <Button 
-                    variant="outline" 
-                    onClick={() => {
-                      setSearchQuery("");
-                      setFilter("all");
-                    }}
-                  >
-                    Clear Filters
-                  </Button>
-                )}
+                <Button onClick={() => navigate('/')}>Book a Taxi Now</Button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                {filterBookings().map((booking) => (
-                  <Card key={booking.id} className="overflow-hidden">
-                    <div className={`h-2 ${
-                      booking.status === 'completed' ? 'bg-green-500' :
-                      booking.status === 'scheduled' ? 'bg-blue-500' :
-                      booking.status === 'in-progress' ? 'bg-yellow-500' :
-                      'bg-red-500'
-                    }`} />
-                    <CardHeader className="pb-2">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <CardTitle className="text-base">{booking.destination}</CardTitle>
-                          <CardDescription className="text-xs">
-                            {booking.id}
-                          </CardDescription>
-                        </div>
-                        <Badge className={getStatusBadgeColor(booking.status)}>
-                          {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
-                        </Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="pb-2">
-                      <div className="grid grid-cols-2 gap-2 text-sm">
-                        <div className="flex flex-col">
-                          <span className="text-xs text-gray-500 dark:text-gray-400">Date</span>
-                          <div className="flex items-center gap-1">
-                            <Calendar size={14} />
-                            <span>
-                              {booking.scheduledFor 
-                                ? formatDateTime(booking.scheduledFor).split(',')[0]
-                                : formatDateTime(booking.createdAt).split(',')[0]
-                              }
-                            </span>
-                          </div>
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-xs text-gray-500 dark:text-gray-400">Time</span>
-                          <div className="flex items-center gap-1">
-                            <Clock size={14} />
-                            <span>
-                              {booking.scheduledFor 
-                                ? formatDateTime(booking.scheduledFor).split(',')[1]
-                                : formatDateTime(booking.createdAt).split(',')[1]
-                              }
-                            </span>
-                          </div>
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-xs text-gray-500 dark:text-gray-400">Fare</span>
-                          <div className="flex items-center gap-1">
-                            <CreditCard size={14} />
-                            <span>${booking.fare.toFixed(2)}</span>
-                          </div>
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-xs text-gray-500 dark:text-gray-400">Shared</span>
-                          <div className="flex items-center gap-1">
-                            {booking.isShared ? (
-                              <CheckCircle size={14} className="text-green-500" />
-                            ) : (
-                              <XCircle size={14} className="text-gray-500" />
+              <>
+                <Table>
+                  <TableCaption>Your taxi booking history</TableCaption>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Destination</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Fare</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {currentBookings.map((booking) => (
+                      <TableRow key={booking.id}>
+                        <TableCell className="font-medium">{booking.destination}</TableCell>
+                        <TableCell>
+                          {booking.status === "scheduled" && booking.scheduledFor
+                            ? formatDate(booking.scheduledFor)
+                            : formatDate(booking.createdAt)}
+                        </TableCell>
+                        <TableCell>
+                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(booking.status)}`}>
+                            {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
+                          </span>
+                        </TableCell>
+                        <TableCell>${booking.fare.toFixed(2)}</TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            {booking.status === "completed" && (
+                              <ReceiptGenerator booking={booking} />
                             )}
-                            <span>{booking.isShared ? "Yes" : "No"}</span>
+                            {booking.status === "in-progress" && (
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => setActiveBookingId(booking.id)}
+                              >
+                                Track
+                              </Button>
+                            )}
+                            {booking.status === "scheduled" && (
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                className="text-red-500"
+                                onClick={() => {
+                                  // In a real app, this would call an API to cancel the booking
+                                  const updatedHistory = user.bookingHistory.map(b => 
+                                    b.id === booking.id ? { ...b, status: "cancelled" } : b
+                                  );
+                                  setUser({
+                                    ...user,
+                                    bookingHistory: updatedHistory
+                                  });
+                                }}
+                              >
+                                Cancel
+                              </Button>
+                            )}
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => {
+                                // Book same route again
+                                navigate(`/?terminal=${booking.terminalId}&destination=${booking.destination}`);
+                              }}
+                            >
+                              Book Again
+                            </Button>
                           </div>
-                        </div>
-                      </div>
-                      
-                      {booking.rating && (
-                        <div className="flex items-center mt-2 bg-yellow-50 dark:bg-yellow-900/20 p-1.5 rounded">
-                          <Star size={14} className="text-yellow-500 mr-1" />
-                          <span className="text-sm font-medium">{booking.rating.toFixed(1)}</span>
-                          {booking.feedback && (
-                            <span className="text-xs ml-2 truncate">{`"${booking.feedback}"`}</span>
-                          )}
-                        </div>
-                      )}
-                    </CardContent>
-                    <CardFooter className="flex justify-between pt-0">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-xs h-8"
-                        onClick={() => handleViewDetails(booking)}
-                      >
-                        Details
-                      </Button>
-                      
-                      {booking.status === 'scheduled' && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-xs h-8 border-red-200 text-red-700 hover:bg-red-50"
-                          onClick={() => handleCancelBooking(booking)}
-                        >
-                          Cancel
-                        </Button>
-                      )}
-                      
-                      {booking.status === 'completed' && !booking.rating && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-xs h-8"
-                          onClick={() => handleRateBooking(booking)}
-                        >
-                          Rate
-                        </Button>
-                      )}
-                    </CardFooter>
-                  </Card>
-                ))}
-              </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="flex justify-center mt-6">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                    >
+                      <ChevronLeft size={16} />
+                    </Button>
+                    <span className="mx-4 flex items-center">
+                      Page {currentPage} of {totalPages}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                      disabled={currentPage === totalPages}
+                    >
+                      <ChevronRight size={16} />
+                    </Button>
+                  </div>
+                )}
+              </>
             )}
-          </>
-        )}
-
-        <Dialog open={!!selectedBooking} onOpenChange={open => !open && setSelectedBooking(null)}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Booking Details</DialogTitle>
-              <DialogDescription>
-                Complete information about your booking
-              </DialogDescription>
-            </DialogHeader>
-            
-            {selectedBooking && (
-              <div className="space-y-4">
-                <div className="bg-primary/10 p-3 rounded-md">
-                  <div className="flex justify-between">
-                    <h3 className="font-medium">{selectedBooking.destination}</h3>
-                    <Badge className={getStatusBadgeColor(selectedBooking.status)}>
-                      {selectedBooking.status.charAt(0).toUpperCase() + selectedBooking.status.slice(1)}
-                    </Badge>
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1">Booking ID: {selectedBooking.id}</p>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div>
-                    <p className="text-xs text-gray-500">Pickup Terminal</p>
-                    <p className="font-medium">Terminal #{selectedBooking.terminalId}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500">Booking Date</p>
-                    <p className="font-medium">{formatDateTime(selectedBooking.createdAt)}</p>
-                  </div>
-                  
-                  {selectedBooking.scheduledFor && (
-                    <>
-                      <div>
-                        <p className="text-xs text-gray-500">Scheduled For</p>
-                        <p className="font-medium">{formatDateTime(selectedBooking.scheduledFor)}</p>
-                      </div>
-                      <div></div>
-                    </>
-                  )}
-                  
-                  {selectedBooking.completedAt && (
-                    <>
-                      <div>
-                        <p className="text-xs text-gray-500">Completed At</p>
-                        <p className="font-medium">{formatDateTime(selectedBooking.completedAt)}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500">Journey Time</p>
-                        <p className="font-medium">
-                          {Math.round((selectedBooking.completedAt.getTime() - selectedBooking.createdAt.getTime()) / 60000)} min
-                        </p>
-                      </div>
-                    </>
-                  )}
-                </div>
-                
-                <Separator />
-                
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div>
-                    <p className="text-xs text-gray-500">Fare</p>
-                    <p className="font-medium">${selectedBooking.fare.toFixed(2)}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500">Payment Method</p>
-                    <p className="font-medium">Credit Card (*4242)</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500">Passengers</p>
-                    <p className="font-medium">{selectedBooking.passengers}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500">Shared Ride</p>
-                    <p className="font-medium">{selectedBooking.isShared ? "Yes" : "No"}</p>
-                  </div>
-                </div>
-                
-                <Separator />
-                
-                <div className="text-sm">
-                  <p className="text-xs text-gray-500">Driver Information</p>
-                  <div className="flex justify-between items-center">
-                    <p className="font-medium">Driver #{selectedBooking.driverId}</p>
-                    {selectedBooking.rating && (
-                      <div className="flex items-center">
-                        <Star size={14} className="text-yellow-500 mr-1" />
-                        <span>{selectedBooking.rating.toFixed(1)}</span>
-                      </div>
-                    )}
-                  </div>
-                  {selectedBooking.feedback && (
-                    <div className="bg-gray-50 dark:bg-gray-800 p-2 mt-2 rounded text-xs italic">
-                      "{selectedBooking.feedback}"
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-            
-            <DialogFooter className="sm:justify-between">
-              {selectedBooking?.status === 'scheduled' && (
-                <Button 
-                  variant="destructive"
-                  onClick={() => {
-                    handleCancelBooking(selectedBooking);
-                    setSelectedBooking(null);
-                  }}
-                >
-                  Cancel Booking
-                </Button>
-              )}
-              
-              {selectedBooking?.status === 'completed' && !selectedBooking.rating && (
-                <Button
-                  onClick={() => {
-                    handleRateBooking(selectedBooking);
-                    setSelectedBooking(null);
-                  }}
-                >
-                  Rate Trip
-                </Button>
-              )}
-              
-              <Button 
-                variant="outline" 
-                onClick={() => setSelectedBooking(null)}
-              >
-                Close
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+          </TabsContent>
+          
+          <TabsContent value="analytics" className="bg-white dark:bg-gray-800 rounded-lg shadow-lg">
+            <TripAnalytics user={user} />
+          </TabsContent>
+          
+          <TabsContent value="favorites" className="bg-white dark:bg-gray-800 rounded-lg shadow-lg">
+            <FavoriteRoutes 
+              user={user} 
+              terminals={terminals} 
+              onSave={handleUpdate}
+              onBookNow={handleBookNow}
+            />
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   );
