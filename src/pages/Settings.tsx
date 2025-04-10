@@ -16,6 +16,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useTheme } from "@/components/theme/ThemeProvider";
+import { ThemeSwitcher } from "@/components/theme/ThemeSwitcher";
 
 const Settings = () => {
   const [notifications, setNotifications] = useState(true);
@@ -30,7 +31,6 @@ const Settings = () => {
   const navigate = useNavigate();
 
   const handleSaveSettings = () => {
-    // In a real app, this would save to user settings in backend
     toast({
       title: "Settings Saved",
       description: "Your preferences have been updated.",
@@ -82,34 +82,28 @@ const Settings = () => {
             <CardContent>
               <div className="space-y-6">
                 <div>
-                  <Label className="mb-2 block">Theme</Label>
-                  <RadioGroup 
-                    value={theme} 
-                    onValueChange={(value: "light" | "dark" | "system") => setTheme(value)}
-                    className="flex flex-col space-y-2"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="light" id="light" />
-                      <Label htmlFor="light" className="flex items-center">
-                        <Sun className="mr-2 h-4 w-4" />
-                        Light
-                      </Label>
+                  <Label className="mb-4 block">Theme</Label>
+                  <div className="flex flex-col space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm">Dark Mode</span>
+                      <ThemeSwitcher />
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="dark" id="dark" />
-                      <Label htmlFor="dark" className="flex items-center">
-                        <Moon className="mr-2 h-4 w-4" />
-                        Dark
-                      </Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="system" id="system" />
+                    
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                      Toggle between light and dark mode, or choose system to match your device settings.
+                    </p>
+                    
+                    <div className="flex items-center space-x-2 mt-2">
+                      <RadioGroupItem value="system" id="system" 
+                        checked={theme === "system"}
+                        onClick={() => setTheme("system")}
+                      />
                       <Label htmlFor="system" className="flex items-center">
                         <Laptop className="mr-2 h-4 w-4" />
-                        System
+                        Use system preferences
                       </Label>
                     </div>
-                  </RadioGroup>
+                  </div>
                 </div>
 
                 <div className="mt-6">
